@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer tests
+        run: bash tests/test_install.sh
+
+  release:
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux libraries for the Godot editor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            unzip curl ca-certificates python3 \
+            libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libxext6 libxrender1 \
+            libgl1 libasound2t64
+
+      - name: Install Godot 4.3.stable and export templates
+        run: |
+          ./scripts/ci-install-godot.sh
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Stamp the letterbox version
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="continuous"
+          fi
+          grep -q '^config/version=' project.godot
+          sed -i "s|^config/version=\".*\"|config/version=\"${version}\"|" project.godot
+          grep '^config/version=' project.godot
+
+      - name: Import and export Linux release binaries
+        run: |
+          set -euo pipefail
+          # First import can race the theme against the font files. The second pass is quiet.
+          godot --headless --path . --import
+          godot --headless --path . --import
+          ./scripts/export-linux.sh
+          test ! -f build/linux-x86_64/nova-letterbox.pck
+          test ! -f build/linux-arm64/nova-letterbox.pck
+
+      - name: Check the binaries
+        run: |
+          set -euo pipefail
+          bash -c 'source ./install.sh; verify_elf dist/nova-letterbox-linux-x86_64 x86_64; verify_elf dist/nova-letterbox-linux-arm64 aarch64'
+          file dist/nova-letterbox-linux-x86_64 dist/nova-letterbox-linux-arm64
+          ./dist/nova-letterbox-linux-x86_64 --version
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/publish-release.sh

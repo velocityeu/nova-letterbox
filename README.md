@@ -6,6 +6,51 @@ The UI is a Godot 4 scene shell. Gauges, the sparkline, and the status ribbon re
 
 Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
+## Install
+
+Linux x86_64 and aarch64 (Raspberry Pi 5). The installer downloads a release binary with the PCK embedded. One line, once this repo and its release assets are public:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
+```
+
+The repository is **private** today, so that anonymous curl fails. Authenticate, then fetch the script the same way:
+
+```bash
+gh auth login
+gh api repos/velocityeu/nova-letterbox/contents/install.sh \
+  -H "Accept: application/vnd.github.raw" | bash
+```
+
+Or with a token that can read this repo (`GH_TOKEN` or `GITHUB_TOKEN`):
+
+```bash
+curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+  -H "Accept: application/vnd.github.raw" \
+  https://api.github.com/repos/velocityeu/nova-letterbox/contents/install.sh | bash
+```
+
+Fullscreen from the installer, or after it:
+
+```bash
+gh api repos/velocityeu/nova-letterbox/contents/install.sh \
+  -H "Accept: application/vnd.github.raw" | bash -s -- --fullscreen
+
+nova-letterbox --fullscreen
+```
+
+The binary lands in `~/.local/share/nova-letterbox/nova-letterbox`. `~/.local/bin/nova-letterbox` is a symlink to it (no sudo). A desktop entry and icon are written under `~/.local/share`. `--system` uses `/usr/local` the same way. `NOVA_VERSION=v0.1.0` pins a tag. `NOVA_VERSION=continuous` pins the rolling build from `main`.
+
+`install.sh` asks GitHub for the **latest stable release**. Pushes to `main` publish a prerelease tagged `continuous`; a `v*` tag publishes the stable release the installer prefers. If no stable release exists yet, the script falls back to `continuous` and says so. The one-liner cannot download a binary until that workflow has succeeded on `main` (or a `v*` tag) at least once. Cutting a `v*` tag is what makes "latest" a stable release; it is not required for the continuous fallback.
+
+Without the script:
+
+```bash
+gh release download --repo velocityeu/nova-letterbox --pattern 'nova-letterbox-linux-*'
+```
+
+Omarchy (Arch + Hyprland) uses that same binary. The launcher entry is native (Super+Space → NOVA Letterbox). Optional `--autostart` is Hyprland-only: [`docs/omarchy.md`](docs/omarchy.md). Pi HDMI, blanking, and session autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+
 ## Views
 
 | View | When | What you see |
@@ -43,12 +88,12 @@ godot --path .
 
 ## Export release binaries
 
-Presets are in `export_presets.cfg`. Rebuilds need **Godot 4.3.stable** and the matching Linux export templates (`linux_release.x86_64` and `linux_release.arm64`). Output goes under `build/`, which is gitignored.
+Presets are in `export_presets.cfg`. Both embed the PCK. Rebuilds need **Godot 4.3.stable** and the matching Linux export templates (`linux_release.x86_64` and `linux_release.arm64`). Editor output goes under `build/`. The installer names are copied to `dist/`. Both directories are gitignored.
 
-| Preset | Architecture | Binary | Editor Play |
+| Preset | Architecture | Export | Release asset |
 | --- | --- | --- | --- |
-| **Linux Desktop** | x86_64 | `build/linux-x86_64/nova-letterbox.x86_64` | yes |
-| **Linux Pi ARM64** | arm64 | `build/linux-arm64/nova-letterbox.arm64` | no |
+| **Linux Desktop** | x86_64 | `build/linux-x86_64/nova-letterbox.x86_64` | `dist/nova-letterbox-linux-x86_64` |
+| **Linux Pi ARM64** | arm64 | `build/linux-arm64/nova-letterbox.arm64` | `dist/nova-letterbox-linux-arm64` |
 
 With `godot` (4.3.stable) on `PATH`:
 
@@ -66,12 +111,14 @@ godot --headless --path . --export-release "Linux Pi ARM64" build/linux-arm64/no
 
 The Pi preset embeds the PCK and includes **ETC2/ASTC** (GLES on the Pi) with **S3TC/BPTC** as a secondary. Godot 4.3 does not split those pairs into separate checkboxes.
 
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs this export on `main` and on `v*` tags, then uploads the two `dist/` names as GitHub Release assets. `main` updates the `continuous` prerelease. A `v*` tag is the latest stable release.
+
 ## Raspberry Pi 5 kiosk
 
-Copy `build/linux-arm64/nova-letterbox.arm64` to the Pi, `chmod +x`, and run it fullscreen. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, keys, and the 4.3.stable rebuild command — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+Install with the one-liner above. The command is the symlink `~/.local/bin/nova-letterbox`. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, and labwc/wayfire autostart — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
 
 ```bash
-./nova-letterbox.arm64 --fullscreen
+nova-letterbox --fullscreen
 ```
 
 No credentials, API tokens, or device secrets belong in this project.
@@ -116,8 +163,15 @@ On a Linux machine with a default route, `res://tests/probe_live.tscn` prints on
 ```
 project.godot              1920×480 window, GL Compatibility, main scene
 export_presets.cfg         Linux Desktop (x86_64) and Linux Pi ARM64
+install.sh                 one-line install from a GitHub Release
+install-omarchy.sh         same install, Omarchy desktop entry forced
 scripts/export-linux.sh    headless release export when godot is on PATH
-docs/pi-kiosk.md           copy, chmod, HDMI, blanking, fullscreen
+scripts/ci-install-godot.sh  Godot 4.3.stable editor and export templates
+scripts/publish-release.sh   upload dist/ binaries to a GitHub Release
+.github/workflows/release.yml  build on main and v* tags
+docs/pi-kiosk.md           HDMI, blanking, labwc/wayfire
+docs/omarchy.md            Omarchy desktop entry and optional Hyprland autostart
+packaging/                 Pi session snippets and Omarchy desktop/autostart examples
 scenes/main.tscn           boots Simple; switches views
 scenes/simple_view.tscn    default letterbox
 scenes/complete_view.tscn  alternate letterbox

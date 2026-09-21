@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=NOVA Letterbox
+Comment=1920x480 telemetry letterbox
+Exec=omarchy-launch-or-focus "NOVA Letterbox" "nova-letterbox --fullscreen"
+Icon=nova-letterbox
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+StartupWMClass=NOVA Letterbox
