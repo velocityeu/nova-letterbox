@@ -1,46 +1,91 @@
 @tool
 extends Control
 
-@onready var _download: DialGauge = $Margin/Body/Dials/DownloadCol/Download
-@onready var _upload: DialGauge = $Margin/Body/Dials/UploadCol/Upload
-@onready var _ping: DialGauge = $Margin/Body/Dials/PingCol/Ping
+## Simple letterbox. Laid out in a 1920×480 design space and scaled to fit
+## so Download, Upload, and Ping stay on screen together.
+
+const DESIGN := Vector2(1920, 480)
+
+@onready var _download: DialGauge = $Download
+@onready var _upload: DialGauge = $Upload
+@onready var _ping: DialGauge = $Ping
 
 
 func _ready() -> void:
-	($Chrome as Panel).add_theme_stylebox_override("panel", NovaTheme.frame_style())
-	var body: VBoxContainer = $Margin/Body
-	body.add_theme_constant_override("separation", 8)
-	var dials: HBoxContainer = $Margin/Body/Dials
-	dials.add_theme_constant_override("separation", 12)
-	for column_path in ["DownloadCol", "UploadCol", "PingCol"]:
-		var column := dials.get_node(column_path) as VBoxContainer
-		column.alignment = BoxContainer.ALIGNMENT_END
-		column.add_theme_constant_override("separation", 2)
+	_style()
+	if not resized.is_connected(_layout):
+		resized.connect(_layout)
+	_apply_demo()
+	call_deferred("_layout")
 
+
+func _style() -> void:
+	($Chrome as Panel).add_theme_stylebox_override("panel", NovaTheme.frame_style())
 	NovaTheme.style_label(
-		$Margin/Body/Wordmark,
-		NovaTheme.tracked(NovaTheme.LIGHT, 16),
-		28,
+		$Wordmark,
+		NovaTheme.tracked(NovaTheme.LIGHT, 18),
+		30,
 		NovaPalette.COPPER_SOFT,
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
-	var caption_font := NovaTheme.tracked(NovaTheme.MEDIUM, 2)
-	for node in [
-		$Margin/Body/Dials/DownloadCol/DownloadCaption,
-		$Margin/Body/Dials/UploadCol/UploadCaption,
-		$Margin/Body/Dials/PingCol/PingCaption,
-	]:
+	var caption_font := NovaTheme.tracked(NovaTheme.MEDIUM, 1)
+	for node in [$DownloadCaption, $UploadCaption, $PingCaption]:
 		NovaTheme.style_label(node, caption_font, 18, NovaPalette.COPPER_SOFT, HORIZONTAL_ALIGNMENT_CENTER)
-
-	($Margin/Body/Rule as ColorRect).color = NovaPalette.BORDER
+	($Rule as ColorRect).color = Color(0.55, 0.40, 0.28, 1)
 	var status_font := NovaTheme.tracked(NovaTheme.REGULAR, 1)
-	NovaTheme.style_label($Margin/Body/Status/WifiBox/WifiLabel, status_font, 16, NovaPalette.STEEL_LIGHT)
-	NovaTheme.style_label($Margin/Body/Status/EthBox/EthLabel, status_font, 16, NovaPalette.STEEL_LIGHT)
-	($Margin/Body/Status as HBoxContainer).add_theme_constant_override("separation", 16)
-	($Margin/Body/Status/WifiBox as HBoxContainer).add_theme_constant_override("separation", 10)
-	($Margin/Body/Status/EthBox as HBoxContainer).add_theme_constant_override("separation", 10)
+	NovaTheme.style_label($WifiLabel, status_font, 16, NovaPalette.STEEL_LIGHT)
+	NovaTheme.style_label($EthLabel, status_font, 16, NovaPalette.STEEL_LIGHT)
+	($WifiIcon as GlyphIcon).glyph_color = NovaPalette.COPPER_SOFT
+	($EthIcon as GlyphIcon).glyph_color = NovaPalette.COPPER_SOFT
 
+
+func _apply_demo() -> void:
 	var data := DemoTelemetry.simple()
 	_download.value = float(data.download_mbps)
 	_upload.value = float(data.upload_mbps)
 	_ping.value = float(data.ping_ms)
+
+
+func _layout() -> void:
+	if size.x < 32.0 or size.y < 32.0:
+		return
+	var s := minf(size.x / DESIGN.x, size.y / DESIGN.y)
+	var origin := (size - DESIGN * s) * 0.5
+	var dial := 332.0
+	var gap := dial * 0.24
+	var cluster := dial * 3.0 + gap * 2.0
+	var left := (DESIGN.x - cluster) * 0.5
+	var dial_y := 46.0
+
+	_place($Wordmark, 0, 10, DESIGN.x, 34, origin, s)
+	_place($Download, left, dial_y, dial, dial, origin, s)
+	_place($Upload, left + dial + gap, dial_y, dial, dial, origin, s)
+	_place($Ping, left + (dial + gap) * 2.0, dial_y, dial, dial, origin, s)
+	var cap_y := dial_y + dial + 4.0
+	_place($DownloadCaption, left, cap_y, dial, 24, origin, s)
+	_place($UploadCaption, left + dial + gap, cap_y, dial, 24, origin, s)
+	_place($PingCaption, left + (dial + gap) * 2.0, cap_y, dial, 24, origin, s)
+
+	_place($Rule, left, 414, cluster, 1, origin, s)
+	_place($WifiIcon, left, 428, 26, 26, origin, s)
+	_place($WifiLabel, left + 34, 424, 280, 32, origin, s)
+	var status_px := maxi(int(round(16.0 * s)), 10)
+	($EthLabel as Label).add_theme_font_size_override("font_size", status_px)
+	var eth_font := ($EthLabel as Label).get_theme_font("font")
+	var eth_w := eth_font.get_string_size($EthLabel.text, HORIZONTAL_ALIGNMENT_LEFT, -1, status_px).x / s + 2.0
+	_place($EthLabel, left + cluster - eth_w, 424, eth_w, 32, origin, s)
+	_place($EthIcon, left + cluster - eth_w - 32.0, 428, 26, 26, origin, s)
+
+	var caption_px := maxi(int(round(18.0 * s)), 10)
+	var word_px := maxi(int(round(30.0 * s)), 14)
+	for node in [$DownloadCaption, $UploadCaption, $PingCaption]:
+		(node as Label).add_theme_font_size_override("font_size", caption_px)
+	($Wordmark as Label).add_theme_font_size_override("font_size", word_px)
+	($WifiLabel as Label).add_theme_font_size_override("font_size", status_px)
+	($EthLabel as Label).add_theme_font_size_override("font_size", status_px)
+
+
+func _place(node: Control, x: float, y: float, w: float, h: float, origin: Vector2, s: float) -> void:
+	node.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	node.position = origin + Vector2(x, y) * s
+	node.size = Vector2(w, h) * s

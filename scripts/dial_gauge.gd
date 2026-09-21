@@ -2,9 +2,8 @@
 class_name DialGauge
 extends Control
 
-## Copper bezel gauge. Angles use Godot's screen space:
-## 0° is east and values increase clockwise, so 135° is the lower-left start
-## of a 270° sweep that ends at the lower-right.
+## Copper bezel gauge matched to docs/design.
+## Angles: 0° is east, clockwise. A 270° sweep runs from 135° to 45°.
 
 @export var min_value: float = 0.0:
 	set(v):
@@ -42,13 +41,20 @@ extends Control
 @export var readout_decimals: int = 0
 @export var readout_unit: String = ""
 
+## Complete-view dials use amber ticks and numerals. Simple dials stay steel.
+@export var amber_scale: bool = false:
+	set(v):
+		amber_scale = v
+		queue_redraw()
+
 var _regular: Font
 var _semibold: Font
 
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	resized.connect(queue_redraw)
+	if not resized.is_connected(queue_redraw):
+		resized.connect(queue_redraw)
 	_ensure_fonts()
 
 
@@ -59,87 +65,162 @@ func _draw() -> void:
 	if extent < 8.0:
 		return
 
-	var ring_w := clampf(extent * 0.048, 6.0, 14.0)
-	var ring_r := extent * 0.5 - ring_w * 0.5 - 1.5
-	var face_r := ring_r - ring_w * 0.62
+	var outer := extent * 0.5 - 1.0
+	var bezel_inner := outer * 0.905
+	var groove := outer * 0.862
+	var tick_outer := outer * 0.842
+	var major_len := outer * 0.078
+	var minor_len := outer * 0.042
+	var label_r := outer * 0.67
 
-	draw_arc(center + Vector2(0, 2.0), ring_r, 0, TAU, 96, Color(0, 0, 0, 0.45), ring_w, true)
-	draw_arc(center, ring_r, 0, TAU, 128, NovaPalette.COPPER, ring_w, true)
-	draw_arc(center, ring_r, deg_to_rad(210), deg_to_rad(330), 48, NovaPalette.AMBER_HOT, maxf(1.5, ring_w * 0.22), true)
-	draw_circle(center, face_r, NovaPalette.FACE)
-	draw_arc(center, face_r - 1.0, 0, TAU, 96, NovaPalette.COPPER_DEEP, 1.25, true)
+	draw_circle(center + Vector2(1.0, extent * 0.014), outer * 0.985, Color(0, 0, 0, 0.38))
+	_draw_bezel(center, bezel_inner, outer)
+	draw_arc(center, outer - 0.4, 0, TAU, 120, Color(0.08, 0.04, 0.02, 0.9), 1.4, true)
+	draw_arc(center, bezel_inner + 0.4, 0, TAU, 100, Color(0.03, 0.015, 0.01, 0.95), 1.5, true)
+	draw_circle(center, groove, NovaPalette.FACE)
+	draw_arc(center, groove - 1.0, 0, TAU, 80, Color(0, 0, 0, 0.55), maxf(2.0, extent * 0.01), true)
 
-	var tick_outer := face_r - extent * 0.03
-	var major_len := extent * 0.058
-	var minor_len := extent * 0.030
-	var label_r := tick_outer - major_len - extent * 0.078
-	var label_px := int(clampf(extent * 0.055, 9, 15))
+	var major_color := NovaPalette.AMBER if amber_scale else NovaPalette.TICK
+	var minor_color := Color(NovaPalette.AMBER.r, NovaPalette.AMBER.g, NovaPalette.AMBER.b, 0.55) if amber_scale else NovaPalette.TICK_MINOR
+	var numeral := NovaPalette.AMBER if amber_scale else NovaPalette.STEEL
+	var label_px := int(clampf(extent * (0.042 if amber_scale else 0.048), 8, 18))
 
 	var step := minor_step if minor_step > 0.0 else major_step
 	if step > 0.0:
 		var v := min_value
 		var guard := 0
-		while v <= max_value + step * 0.25 and guard < 80:
+		while v <= max_value + step * 0.25 and guard < 120:
 			var shown := minf(v, max_value)
 			var ang := _angle(shown)
 			var dir := Vector2.from_angle(ang)
 			var major := _on_step(shown, major_step)
 			var length := major_len if major else minor_len
-			var tick_color := NovaPalette.TICK if major else NovaPalette.TICK_MINOR
-			var tick_w := maxf(1.4, extent * 0.008) if major else maxf(1.0, extent * 0.005)
-			draw_line(center + dir * (tick_outer - length), center + dir * tick_outer, tick_color, tick_w, true)
+			var tick_w := maxf(1.7, extent * 0.007) if major else maxf(1.0, extent * 0.0032)
+			draw_line(
+				center + dir * (tick_outer - length),
+				center + dir * tick_outer,
+				major_color if major else minor_color,
+				tick_w,
+				true
+			)
 			if _on_step(shown, label_step):
-				NovaTheme.draw_centered(
-					self,
-					_regular,
-					_format_tick(shown),
-					center + dir * label_r,
-					label_px,
-					NovaPalette.STEEL
-				)
+				NovaTheme.draw_centered(self, _regular, _format_tick(shown), center + dir * label_r, label_px, numeral)
 			if is_equal_approx(shown, max_value):
 				break
 			v += step
 			guard += 1
 
-	_draw_needle(center, tick_outer - extent * 0.01, extent)
+	_draw_needle(center, tick_outer - major_len * 0.55, extent)
 	_draw_hub(center, extent)
 
 	if show_readout:
 		var number := _format_readout(value)
-		var number_px := int(clampf(extent * 0.112, 13, 26))
-		var unit_px := int(clampf(extent * 0.052, 9, 13))
-		# Sit in the open lower wedge, clear of the hub and the end ticks.
-		var number_at := center + Vector2(0, face_r * 0.38)
+		var number_px := int(clampf(extent * 0.115, 12, 32))
+		var unit_px := int(clampf(extent * 0.048, 9, 15))
+		var number_at := center + Vector2(0, groove * 0.46)
 		NovaTheme.draw_centered(self, _semibold, number, number_at, number_px, NovaPalette.CREAM)
 		if not readout_unit.is_empty():
 			NovaTheme.draw_centered(
 				self,
 				_regular,
 				readout_unit,
-				number_at + Vector2(0, number_px * 0.62),
+				number_at + Vector2(0, number_px * 0.78),
 				unit_px,
-				NovaPalette.STEEL
+				NovaPalette.STEEL_LIGHT
 			)
+
+
+func _draw_bezel(center: Vector2, inner: float, outer: float) -> void:
+	var segments := 120
+	var up := Vector2(0, -1)
+	for i in segments:
+		var a0 := TAU * float(i) / float(segments)
+		var a1 := TAU * float(i + 1) / float(segments)
+		var d0 := Vector2.from_angle(a0)
+		var d1 := Vector2.from_angle(a1)
+		var c0 := _bezel_color(d0, up)
+		var c1 := _bezel_color(d1, up)
+		var mid := (inner + outer) * 0.5
+		draw_polygon(
+			PackedVector2Array([
+				center + d0 * outer,
+				center + d1 * outer,
+				center + d1 * mid,
+				center + d0 * mid,
+			]),
+			PackedColorArray([
+				c0.darkened(0.28),
+				c1.darkened(0.28),
+				c1.lightened(0.08),
+				c0.lightened(0.08),
+			])
+		)
+		draw_polygon(
+			PackedVector2Array([
+				center + d0 * mid,
+				center + d1 * mid,
+				center + d1 * inner,
+				center + d0 * inner,
+			]),
+			PackedColorArray([
+				c0.lightened(0.08),
+				c1.lightened(0.08),
+				c1.darkened(0.22),
+				c0.darkened(0.22),
+			])
+		)
+	draw_arc(
+		center,
+		outer - maxf(1.5, (outer - inner) * 0.18),
+		deg_to_rad(206),
+		deg_to_rad(334),
+		48,
+		Color(1.0, 0.92, 0.80, 0.42),
+		maxf(1.3, (outer - inner) * 0.14),
+		true
+	)
+
+
+func _bezel_color(dir: Vector2, up: Vector2) -> Color:
+	var light := clampf(dir.dot(up) * 0.5 + 0.5, 0.0, 1.0)
+	light = pow(light, 0.65)
+	if light < 0.45:
+		return NovaPalette.COPPER_LO.lerp(NovaPalette.COPPER, light / 0.45)
+	return NovaPalette.COPPER.lerp(NovaPalette.COPPER_HI, (light - 0.45) / 0.55)
 
 
 func _draw_needle(center: Vector2, tip_r: float, extent: float) -> void:
 	var dir := Vector2.from_angle(_angle(value))
 	var normal := Vector2(-dir.y, dir.x)
 	var tip := center + dir * tip_r
-	var tail := center - dir * (extent * 0.045)
-	var half := maxf(1.6, extent * 0.012)
+	var tail := center - dir * (extent * 0.02)
+	var half_tail := maxf(1.4, extent * 0.009)
+	var shadow := Vector2(0.4, 1.4)
 	draw_colored_polygon(
-		PackedVector2Array([tip, tail + normal * half, tail - normal * half]),
+		PackedVector2Array([
+			tip + shadow,
+			tail + normal * half_tail + shadow,
+			tail - normal * half_tail + shadow,
+		]),
+		Color(0, 0, 0, 0.35)
+	)
+	draw_colored_polygon(
+		PackedVector2Array([
+			tip,
+			tail + normal * half_tail,
+			tail - normal * half_tail,
+		]),
 		NovaPalette.AMBER
 	)
+	draw_line(center, tip - dir * (extent * 0.03), NovaPalette.AMBER_HOT, maxf(1.0, extent * 0.0035), true)
 
 
 func _draw_hub(center: Vector2, extent: float) -> void:
-	var hub := clampf(extent * 0.038, 4.0, 10.0)
-	draw_circle(center, hub, NovaPalette.COPPER)
-	draw_circle(center, hub * 0.48, NovaPalette.FACE)
-	draw_arc(center, hub, 0, TAU, 24, NovaPalette.AMBER_HOT, 1.0, true)
+	var hub := clampf(extent * 0.038, 3.2, 13.0)
+	draw_circle(center, hub, Color(0.10, 0.07, 0.045))
+	draw_arc(center, hub * 0.78, 0, TAU, 28, NovaPalette.COPPER, maxf(1.2, hub * 0.28), true)
+	draw_circle(center, hub * 0.34, Color(0.16, 0.11, 0.08))
+	draw_arc(center, hub * 0.78, deg_to_rad(210), deg_to_rad(330), 16, NovaPalette.COPPER_HI, 1.1, true)
 
 
 func _angle(v: float) -> float:

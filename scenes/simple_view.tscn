@@ -22,45 +22,13 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Margin" type="MarginContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 40
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 40
-theme_override_constants/margin_bottom = 14
-
-[node name="Body" type="VBoxContainer" parent="Margin"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="Wordmark" type="Label" parent="Margin/Body"]
-layout_mode = 2
+[node name="Wordmark" type="Label" parent="."]
+layout_mode = 0
 text = "NOVA"
 horizontal_alignment = 1
 
-[node name="Dials" type="HBoxContainer" parent="Margin/Body"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="DownloadCol" type="VBoxContainer" parent="Margin/Body/Dials"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-alignment = 2
-
-[node name="Download" type="Control" parent="Margin/Body/Dials/DownloadCol"]
-custom_minimum_size = Vector2(252, 252)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Download" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("2_dial")
 max_value = 175.0
 value = 118.0
@@ -68,22 +36,13 @@ major_step = 25.0
 minor_step = 5.0
 label_step = 25.0
 
-[node name="DownloadCaption" type="Label" parent="Margin/Body/Dials/DownloadCol"]
-layout_mode = 2
+[node name="DownloadCaption" type="Label" parent="."]
+layout_mode = 0
 text = "DOWNLOAD Mbps"
 horizontal_alignment = 1
 
-[node name="UploadCol" type="VBoxContainer" parent="Margin/Body/Dials"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-alignment = 2
-
-[node name="Upload" type="Control" parent="Margin/Body/Dials/UploadCol"]
-custom_minimum_size = Vector2(252, 252)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Upload" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("2_dial")
 max_value = 175.0
 value = 136.0
@@ -91,22 +50,13 @@ major_step = 25.0
 minor_step = 5.0
 label_step = 25.0
 
-[node name="UploadCaption" type="Label" parent="Margin/Body/Dials/UploadCol"]
-layout_mode = 2
+[node name="UploadCaption" type="Label" parent="."]
+layout_mode = 0
 text = "UPLOAD Mbps"
 horizontal_alignment = 1
 
-[node name="PingCol" type="VBoxContainer" parent="Margin/Body/Dials"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-alignment = 2
-
-[node name="Ping" type="Control" parent="Margin/Body/Dials/PingCol"]
-custom_minimum_size = Vector2(252, 252)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Ping" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("2_dial")
 max_value = 175.0
 value = 29.0
@@ -114,56 +64,30 @@ major_step = 25.0
 minor_step = 5.0
 label_step = 25.0
 
-[node name="PingCaption" type="Label" parent="Margin/Body/Dials/PingCol"]
-layout_mode = 2
+[node name="PingCaption" type="Label" parent="."]
+layout_mode = 0
 text = "PING ms"
 horizontal_alignment = 1
 
-[node name="Rule" type="ColorRect" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 1)
-layout_mode = 2
+[node name="Rule" type="ColorRect" parent="."]
+layout_mode = 0
 mouse_filter = 2
-color = Color(0.360784, 0.266667, 0.188235, 1)
+color = Color(0.42, 0.26, 0.16, 1)
 
-[node name="Status" type="HBoxContainer" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_constants/separation = 16
-alignment = 1
-
-[node name="WifiBox" type="HBoxContainer" parent="Margin/Body/Status"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="WifiIcon" type="Control" parent="Margin/Body/Status/WifiBox"]
-custom_minimum_size = Vector2(26, 26)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="WifiIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 0
 
-[node name="WifiLabel" type="Label" parent="Margin/Body/Status/WifiBox"]
-layout_mode = 2
+[node name="WifiLabel" type="Label" parent="."]
+layout_mode = 0
 text = "Wi-Fi Connected"
 
-[node name="Spacer" type="Control" parent="Margin/Body/Status"]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="EthBox" type="HBoxContainer" parent="Margin/Body/Status"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="EthIcon" type="Control" parent="Margin/Body/Status/EthBox"]
-custom_minimum_size = Vector2(26, 26)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="EthIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 1
 
-[node name="EthLabel" type="Label" parent="Margin/Body/Status/EthBox"]
-layout_mode = 2
+[node name="EthLabel" type="Label" parent="."]
+layout_mode = 0
 text = "Ethernet Link"

@@ -32,23 +32,35 @@ static func style_label(label: Label, font: Font, size: int, color: Color, align
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
+static func flat_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = NovaPalette.BG
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(0)
+	return style
+
+
 static func frame_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = NovaPalette.BG
 	style.border_color = NovaPalette.BORDER
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(12)
+	style.set_corner_radius_all(10)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
 	return style
 
 
 static func card_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = NovaPalette.CARD
-	style.border_color = NovaPalette.BORDER
+	style.border_color = NovaPalette.BORDER_DIM
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
 	style.content_margin_top = 6
 	style.content_margin_bottom = 6
 	return style
@@ -56,14 +68,14 @@ static func card_style() -> StyleBoxFlat:
 
 static func badge_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(NovaPalette.CARD.r, NovaPalette.CARD.g, NovaPalette.CARD.b, 0.65)
+	style.bg_color = Color(NovaPalette.CARD.r, NovaPalette.CARD.g, NovaPalette.CARD.b, 0.92)
 	style.border_color = NovaPalette.COPPER
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
+	style.set_corner_radius_all(6)
 	style.content_margin_left = 10
 	style.content_margin_right = 12
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
 	return style
 
 

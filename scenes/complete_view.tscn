@@ -26,450 +26,255 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Margin" type="MarginContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 8
-
-[node name="Body" type="VBoxContainer" parent="Margin"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 4
-
-[node name="Top" type="HBoxContainer" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-theme_override_constants/separation = 18
-alignment = 1
-
-[node name="ClockCol" type="VBoxContainer" parent="Margin/Body/Top"]
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-size_flags_vertical = 4
-theme_override_constants/separation = 0
-
-[node name="ClockTime" type="Label" parent="Margin/Body/Top/ClockCol"]
-layout_mode = 2
-text = "00:00:00"
-
-[node name="ClockDate" type="Label" parent="Margin/Body/Top/ClockCol"]
-layout_mode = 2
-text = "—"
-
-[node name="MarkWrap" type="CenterContainer" parent="Margin/Body/Top"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-
-[node name="MarkRow" type="HBoxContainer" parent="Margin/Body/Top/MarkWrap"]
-layout_mode = 2
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="MarkLineL" type="ColorRect" parent="Margin/Body/Top/MarkWrap/MarkRow"]
-custom_minimum_size = Vector2(72, 1)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="ClockPanel" type="Panel" parent="."]
+layout_mode = 0
 mouse_filter = 2
-color = Color(0.541176, 0.337255, 0.203922, 1)
 
-[node name="Wordmark" type="Label" parent="Margin/Body/Top/MarkWrap/MarkRow"]
-layout_mode = 2
-size_flags_vertical = 4
+[node name="ClockTime" type="Label" parent="."]
+layout_mode = 0
+text = "00:00:00"
+horizontal_alignment = 1
+
+[node name="ClockDate" type="Label" parent="."]
+layout_mode = 0
+text = "—"
+horizontal_alignment = 1
+
+[node name="MarkLineL" type="ColorRect" parent="."]
+layout_mode = 0
+mouse_filter = 2
+
+[node name="Wordmark" type="Label" parent="."]
+layout_mode = 0
 text = "NOVA"
 horizontal_alignment = 1
 
-[node name="MarkLineR" type="ColorRect" parent="Margin/Body/Top/MarkWrap/MarkRow"]
-custom_minimum_size = Vector2(72, 1)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="MarkLineR" type="ColorRect" parent="."]
+layout_mode = 0
 mouse_filter = 2
-color = Color(0.541176, 0.337255, 0.203922, 1)
 
-[node name="IpRow" type="HBoxContainer" parent="Margin/Body/Top"]
-layout_mode = 2
-theme_override_constants/separation = 22
-alignment = 1
-
-[node name="PubCol" type="VBoxContainer" parent="Margin/Body/Top/IpRow"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="PubCap" type="Label" parent="Margin/Body/Top/IpRow/PubCol"]
-layout_mode = 2
+[node name="PubCap" type="Label" parent="."]
+layout_mode = 0
 text = "PUB IP"
 
-[node name="PubVal" type="Label" parent="Margin/Body/Top/IpRow/PubCol"]
-layout_mode = 2
+[node name="PubVal" type="Label" parent="."]
+layout_mode = 0
 text = "203.0.113.42"
 
-[node name="LocCol" type="VBoxContainer" parent="Margin/Body/Top/IpRow"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="LocCap" type="Label" parent="Margin/Body/Top/IpRow/LocCol"]
-layout_mode = 2
+[node name="LocCap" type="Label" parent="."]
+layout_mode = 0
 text = "LOC IP"
 
-[node name="LocVal" type="Label" parent="Margin/Body/Top/IpRow/LocCol"]
-layout_mode = 2
+[node name="LocVal" type="Label" parent="."]
+layout_mode = 0
 text = "192.168.1.101"
 
-[node name="Vpn" type="PanelContainer" parent="Margin/Body/Top"]
-custom_minimum_size = Vector2(148, 52)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="VpnPanel" type="Panel" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="VpnBox" type="HBoxContainer" parent="Margin/Body/Top/Vpn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="VpnIcon" type="Control" parent="Margin/Body/Top/Vpn/VpnBox"]
-custom_minimum_size = Vector2(22, 22)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="VpnIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 2
 
-[node name="VpnText" type="VBoxContainer" parent="Margin/Body/Top/Vpn/VpnBox"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="VpnKicker" type="Label" parent="Margin/Body/Top/Vpn/VpnBox/VpnText"]
-layout_mode = 2
+[node name="VpnKicker" type="Label" parent="."]
+layout_mode = 0
 text = "VPN"
 
-[node name="VpnState" type="Label" parent="Margin/Body/Top/Vpn/VpnBox/VpnText"]
-layout_mode = 2
+[node name="VpnState" type="Label" parent="."]
+layout_mode = 0
 text = "CONNECTED"
 
-[node name="TopRule" type="ColorRect" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 1)
-layout_mode = 2
-mouse_filter = 2
-color = Color(0.360784, 0.266667, 0.188235, 1)
+[node name="ClusterCap" type="Label" parent="."]
+layout_mode = 0
+text = "B    TELEMETRY CLUSTER"
 
-[node name="Mid" type="HBoxContainer" parent="Margin/Body"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 18
-alignment = 1
+[node name="DownloadCap" type="Label" parent="."]
+layout_mode = 0
+text = "DOWNLOAD"
+horizontal_alignment = 1
 
-[node name="Cluster" type="VBoxContainer" parent="Margin/Body/Mid"]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 2
+[node name="UploadCap" type="Label" parent="."]
+layout_mode = 0
+text = "UPLOAD"
+horizontal_alignment = 1
 
-[node name="ClusterCap" type="Label" parent="Margin/Body/Mid/Cluster"]
-custom_minimum_size = Vector2(0, 18)
-layout_mode = 2
-text = "B   TELEMETRY CLUSTER"
+[node name="PingCap" type="Label" parent="."]
+layout_mode = 0
+text = "PING"
+horizontal_alignment = 1
 
-[node name="Pair" type="HBoxContainer" parent="Margin/Body/Mid/Cluster"]
-layout_mode = 2
-theme_override_constants/separation = 16
-alignment = 1
-
-[node name="Download" type="Control" parent="Margin/Body/Mid/Cluster/Pair"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Download" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("2_dial")
 max_value = 100.0
 value = 48.7
 major_step = 10.0
-minor_step = 5.0
-label_step = 20.0
+minor_step = 2.0
+label_step = 10.0
 show_readout = true
 readout_decimals = 1
 readout_unit = "Mbps"
+amber_scale = true
 
-[node name="Upload" type="Control" parent="Margin/Body/Mid/Cluster/Pair"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Upload" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("2_dial")
 max_value = 100.0
 value = 18.3
 major_step = 10.0
-minor_step = 5.0
-label_step = 20.0
+minor_step = 2.0
+label_step = 10.0
 show_readout = true
 readout_decimals = 1
 readout_unit = "Mbps"
+amber_scale = true
 
-[node name="CenterCol" type="VBoxContainer" parent="Margin/Body/Mid"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 2
+[node name="Ping" type="Control" parent="."]
+layout_mode = 0
+script = ExtResource("2_dial")
+max_value = 100.0
+value = 14.0
+major_step = 10.0
+minor_step = 2.0
+label_step = 10.0
+show_readout = true
+readout_unit = "ms"
+amber_scale = true
 
-[node name="Spark" type="Control" parent="Margin/Body/Mid/CenterCol"]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="Spark" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("4_spark")
 title = "THROUGHPUT (Mbps)"
 
-[node name="PathCap" type="Label" parent="Margin/Body/Mid/CenterCol"]
-custom_minimum_size = Vector2(0, 16)
-layout_mode = 2
-text = "C   NETWORK PATH"
-horizontal_alignment = 1
-
-[node name="Path" type="Control" parent="Margin/Body/Mid/CenterCol"]
-custom_minimum_size = Vector2(0, 72)
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="Path" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("5_path")
 
-[node name="Rings" type="HBoxContainer" parent="Margin/Body/Mid/CenterCol"]
-layout_mode = 2
-theme_override_constants/separation = 28
-alignment = 1
-
-[node name="Cpu" type="Control" parent="Margin/Body/Mid/CenterCol/Rings"]
-custom_minimum_size = Vector2(92, 78)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Cpu" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("6_ring")
 caption = "CPU"
 ratio = 0.23
 icon_kind = 5
 
-[node name="Ram" type="Control" parent="Margin/Body/Mid/CenterCol/Rings"]
-custom_minimum_size = Vector2(92, 78)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+[node name="Ram" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("6_ring")
 caption = "RAM"
 ratio = 0.41
 icon_kind = 6
 
-[node name="PingCol" type="VBoxContainer" parent="Margin/Body/Mid"]
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-theme_override_constants/separation = 2
-alignment = 1
-
-[node name="PingSpacer" type="Control" parent="Margin/Body/Mid/PingCol"]
-custom_minimum_size = Vector2(0, 18)
-layout_mode = 2
+[node name="Ribbon" type="Panel" parent="."]
+layout_mode = 0
 mouse_filter = 2
 
-[node name="Ping" type="Control" parent="Margin/Body/Mid/PingCol"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
-script = ExtResource("2_dial")
-max_value = 100.0
-value = 14.0
-major_step = 10.0
-minor_step = 5.0
-label_step = 20.0
-show_readout = true
-readout_unit = "ms"
+[node name="RibbonMask" type="ColorRect" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="RibbonCap" type="Label" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 16)
-layout_mode = 2
+[node name="RibbonCap" type="Label" parent="."]
+layout_mode = 0
 text = "STATUS RIBBON"
 
-[node name="Ribbon" type="HBoxContainer" parent="Margin/Body"]
-custom_minimum_size = Vector2(0, 78)
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
+[node name="WifiCard" type="Panel" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="WifiCard" type="PanelContainer" parent="Margin/Body/Ribbon"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="WifiIn" type="HBoxContainer" parent="Margin/Body/Ribbon/WifiCard"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="WifiIcon" type="Control" parent="Margin/Body/Ribbon/WifiCard/WifiIn"]
-custom_minimum_size = Vector2(28, 28)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="WifiIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 0
 
-[node name="WifiText" type="VBoxContainer" parent="Margin/Body/Ribbon/WifiCard/WifiIn"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 0
-
-[node name="WifiHead" type="HBoxContainer" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText"]
-layout_mode = 2
-alignment = 1
-
-[node name="WifiTitle" type="Label" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText/WifiHead"]
-layout_mode = 2
+[node name="WifiTitle" type="Label" parent="."]
+layout_mode = 0
 text = "Wi-Fi"
 
-[node name="WifiGap" type="Control" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText/WifiHead"]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
+[node name="WifiSsid" type="Label" parent="."]
+layout_mode = 0
+text = "NovaLab_5G"
 
-[node name="SignalIcon" type="Control" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText/WifiHead"]
-custom_minimum_size = Vector2(28, 16)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="WifiBand" type="Label" parent="."]
+layout_mode = 0
+text = "5 GHz"
+
+[node name="WifiRssi" type="Label" parent="."]
+layout_mode = 0
+text = "-42 dBm"
+
+[node name="SignalIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 10
 level = 4
 
-[node name="Ssid" type="Label" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText"]
-layout_mode = 2
-text = "NovaLab_5G"
+[node name="EthCard" type="Panel" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="Band" type="Label" parent="Margin/Body/Ribbon/WifiCard/WifiIn/WifiText"]
-layout_mode = 2
-text = "5 GHz    -42 dBm"
-
-[node name="EthCard" type="PanelContainer" parent="Margin/Body/Ribbon"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="EthIn" type="HBoxContainer" parent="Margin/Body/Ribbon/EthCard"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="EthIcon" type="Control" parent="Margin/Body/Ribbon/EthCard/EthIn"]
-custom_minimum_size = Vector2(28, 28)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="EthIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 1
 
-[node name="EthText" type="VBoxContainer" parent="Margin/Body/Ribbon/EthCard/EthIn"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 0
-
-[node name="EthHead" type="HBoxContainer" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="EthTitle" type="Label" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText/EthHead"]
-layout_mode = 2
+[node name="EthTitle" type="Label" parent="."]
+layout_mode = 0
 text = "Ethernet"
 
-[node name="EthGap" type="Control" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText/EthHead"]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-
-[node name="EthDot" type="Control" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText/EthHead"]
-custom_minimum_size = Vector2(10, 10)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="EthDot" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 11
 
-[node name="EthRate" type="Label" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText"]
-layout_mode = 2
+[node name="EthRate" type="Label" parent="."]
+layout_mode = 0
 text = "1G"
 
-[node name="EthLink" type="Label" parent="Margin/Body/Ribbon/EthCard/EthIn/EthText"]
-layout_mode = 2
+[node name="EthLink" type="Label" parent="."]
+layout_mode = 0
 text = "LINK: 1 Gbps"
 
-[node name="TempCard" type="PanelContainer" parent="Margin/Body/Ribbon"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="TempCard" type="Panel" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="TempIn" type="VBoxContainer" parent="Margin/Body/Ribbon/TempCard"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="TempHead" type="HBoxContainer" parent="Margin/Body/Ribbon/TempCard/TempIn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="TempIcon" type="Control" parent="Margin/Body/Ribbon/TempCard/TempIn/TempHead"]
-custom_minimum_size = Vector2(22, 22)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="TempIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 3
 
-[node name="TempTitle" type="Label" parent="Margin/Body/Ribbon/TempCard/TempIn/TempHead"]
-layout_mode = 2
+[node name="TempTitle" type="Label" parent="."]
+layout_mode = 0
 text = "Pi TEMP"
 
-[node name="TempVal" type="Label" parent="Margin/Body/Ribbon/TempCard/TempIn"]
-layout_mode = 2
+[node name="TempVal" type="Label" parent="."]
+layout_mode = 0
 text = "52.6 °C"
 
-[node name="TempBar" type="Control" parent="Margin/Body/Ribbon/TempCard/TempIn"]
-custom_minimum_size = Vector2(0, 8)
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="TempBar" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("7_bar")
 ratio = 0.66
 
-[node name="DiskCard" type="PanelContainer" parent="Margin/Body/Ribbon"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="DiskCard" type="Panel" parent="."]
+layout_mode = 0
+mouse_filter = 2
 
-[node name="DiskIn" type="VBoxContainer" parent="Margin/Body/Ribbon/DiskCard"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="DiskHead" type="HBoxContainer" parent="Margin/Body/Ribbon/DiskCard/DiskIn"]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="DiskIcon" type="Control" parent="Margin/Body/Ribbon/DiskCard/DiskIn/DiskHead"]
-custom_minimum_size = Vector2(22, 22)
-layout_mode = 2
-size_flags_vertical = 4
+[node name="DiskIcon" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("3_icon")
 kind = 4
 
-[node name="DiskTitle" type="Label" parent="Margin/Body/Ribbon/DiskCard/DiskIn/DiskHead"]
-layout_mode = 2
+[node name="DiskTitle" type="Label" parent="."]
+layout_mode = 0
 text = "DISK"
 
-[node name="DiskVal" type="Label" parent="Margin/Body/Ribbon/DiskCard/DiskIn"]
-layout_mode = 2
+[node name="DiskVal" type="Label" parent="."]
+layout_mode = 0
 text = "67%"
 
-[node name="DiskBar" type="Control" parent="Margin/Body/Ribbon/DiskCard/DiskIn"]
-custom_minimum_size = Vector2(0, 8)
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="DiskBar" type="Control" parent="."]
+layout_mode = 0
 script = ExtResource("7_bar")
 ratio = 0.67
