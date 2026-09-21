@@ -39,7 +39,7 @@ gh api repos/velocityeu/nova-letterbox/contents/install.sh \
 nova-letterbox --fullscreen
 ```
 
-The binary lands in `~/.local/bin/nova-letterbox` (no sudo). `--system` uses `/usr/local/bin`. `NOVA_VERSION=v0.1.0` pins a tag. `NOVA_VERSION=continuous` pins the rolling build from `main`.
+The binary lands in `~/.local/share/nova-letterbox/nova-letterbox`. `~/.local/bin/nova-letterbox` is a symlink to it (no sudo). A desktop entry and icon are written under `~/.local/share`. `--system` uses `/usr/local` the same way. `NOVA_VERSION=v0.1.0` pins a tag. `NOVA_VERSION=continuous` pins the rolling build from `main`.
 
 `install.sh` asks GitHub for the **latest stable release**. Pushes to `main` publish a prerelease tagged `continuous`; a `v*` tag publishes the stable release the installer prefers. If no stable release exists yet, the script falls back to `continuous` and says so. The one-liner cannot download a binary until that workflow has succeeded on `main` (or a `v*` tag) at least once. Cutting a `v*` tag is what makes "latest" a stable release; it is not required for the continuous fallback.
 
@@ -49,7 +49,7 @@ Without the script:
 gh release download --repo velocityeu/nova-letterbox --pattern 'nova-letterbox-linux-*'
 ```
 
-Omarchy (Arch + Hyprland) uses the same binary plus a desktop entry: [`docs/omarchy.md`](docs/omarchy.md). Pi HDMI, blanking, and session autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+Omarchy (Arch + Hyprland) uses that same binary. The launcher entry is native (Super+Space → NOVA Letterbox). Optional `--autostart` is Hyprland-only: [`docs/omarchy.md`](docs/omarchy.md). Pi HDMI, blanking, and session autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
 
 ## Views
 
@@ -115,7 +115,7 @@ The Pi preset embeds the PCK and includes **ETC2/ASTC** (GLES on the Pi) with **
 
 ## Raspberry Pi 5 kiosk
 
-Install with the one-liner above, or copy `dist/nova-letterbox-linux-arm64` to `~/.local/bin/nova-letterbox` and `chmod +x`. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, labwc/wayfire autostart, and a short systemd user unit — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+Install with the one-liner above. The command is the symlink `~/.local/bin/nova-letterbox`. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, and labwc/wayfire autostart — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
 
 ```bash
 nova-letterbox --fullscreen
@@ -164,14 +164,14 @@ On a Linux machine with a default route, `res://tests/probe_live.tscn` prints on
 project.godot              1920×480 window, GL Compatibility, main scene
 export_presets.cfg         Linux Desktop (x86_64) and Linux Pi ARM64
 install.sh                 one-line install from a GitHub Release
-install-omarchy.sh         same binary, plus an Omarchy desktop entry
+install-omarchy.sh         same install, Omarchy desktop entry forced
 scripts/export-linux.sh    headless release export when godot is on PATH
 scripts/ci-install-godot.sh  Godot 4.3.stable editor and export templates
 scripts/publish-release.sh   upload dist/ binaries to a GitHub Release
 .github/workflows/release.yml  build on main and v* tags
-docs/pi-kiosk.md           HDMI, blanking, labwc/wayfire, systemd
-docs/omarchy.md            Omarchy / Hyprland install and autostart
-packaging/                 Pi session snippets, Omarchy desktop file, PKGBUILD
+docs/pi-kiosk.md           HDMI, blanking, labwc/wayfire
+docs/omarchy.md            Omarchy desktop entry and optional Hyprland autostart
+packaging/                 Pi session snippets and Omarchy desktop/autostart examples
 scenes/main.tscn           boots Simple; switches views
 scenes/simple_view.tscn    default letterbox
 scenes/complete_view.tscn  alternate letterbox

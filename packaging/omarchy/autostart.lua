@@ -1,5 +1,5 @@
--- Extra autostart processes.
--- Omarchy loads ~/.config/hypr/autostart.lua from hyprland.lua.
--- install-omarchy.sh --autostart appends the launch line with the installed path.
-
-o.launch_on_start("nova-letterbox --fullscreen")
+-- Current Omarchy loads ~/.config/hypr/autostart.lua, not autostart.conf.
+-- install.sh --autostart appends the launch line when that file is the session.
+-- nova-letterbox-begin
+o.launch_on_start("nova-letterbox")
+-- nova-letterbox-end

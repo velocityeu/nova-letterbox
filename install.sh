@@ -33,14 +33,15 @@ usage() {
 Usage: install.sh [--fullscreen] [--system] [--prefix DIR] [--omarchy] [--autostart]
 
 Install the matching Linux release binary from the latest GitHub Release.
-Default location is ~/.local/bin/nova-letterbox. No sudo unless --system
-cannot write /usr/local/bin.
+The binary is ~/.local/share/nova-letterbox/nova-letterbox.
+~/.local/bin/nova-letterbox is a symlink to it. No sudo unless --system
+cannot write /usr/local.
 
-  --fullscreen   launch the installed binary fullscreen when install finishes
-  --system       install to /usr/local/bin (sudo only if that directory is not writable)
-  --prefix DIR   install to DIR/bin/nova-letterbox
-  --omarchy      also write an Omarchy/Hyprland desktop entry
-  --autostart    with --omarchy, add o.launch_on_start to ~/.config/hypr/autostart.lua
+  --fullscreen   launch fullscreen when install finishes
+  --system       use /usr/local/share and /usr/local/bin (sudo only if needed)
+  --prefix DIR   use DIR/share and DIR/bin
+  --omarchy      write the Omarchy desktop entry (also implied by /etc/os-release)
+  --autostart    Hyprland login autostart and a 1920x480 fullscreen window rule
   -h, --help     show this help
 
 Environment:
@@ -70,7 +71,7 @@ parse_args() {
 				[[ -n "$PREFIX" ]] || die "--prefix needs a directory"
 				;;
 			--omarchy) OMARCHY=1 ;;
-			--autostart) AUTOSTART=1; OMARCHY=1 ;;
+			--autostart) AUTOSTART=1 ;;
 			-h|--help) usage; exit 0 ;;
 			*) die "unknown argument: $1 (try --help)" ;;
 		esac
@@ -164,6 +165,30 @@ resolve_prefix() {
 	else
 		printf '%s' "${HOME}/.local"
 	fi
+}
+
+share_root() {
+	if [[ -n "$PREFIX" || "$SYSTEM" == 1 ]]; then
+		printf '%s' "$(resolve_prefix)/share"
+	else
+		printf '%s' "${XDG_DATA_HOME:-${HOME}/.local/share}"
+	fi
+}
+
+bin_dir() {
+	printf '%s' "$(resolve_prefix)/bin"
+}
+
+app_dir() {
+	printf '%s' "$(share_root)/nova-letterbox"
+}
+
+app_binary() {
+	printf '%s' "$(app_dir)/nova-letterbox"
+}
+
+cli_link() {
+	printf '%s' "$(bin_dir)/nova-letterbox"
 }
 
 # Read ELF64 class and e_machine. arch is x86_64 or aarch64.
@@ -354,17 +379,25 @@ install_from_source() {
 	rm -rf "$work"
 }
 
-place_binary() {
+ensure_dir() {
+	local dir="$1"
+	if mkdir -p "$dir" 2>/dev/null && [[ -w "$dir" ]]; then
+		return 0
+	fi
+	if [[ "$SYSTEM" == 1 ]]; then
+		echo "Creating ${dir} with sudo."
+		sudo mkdir -p "$dir"
+		return 0
+	fi
+	die "cannot create ${dir}. Use a writable --prefix, or --system."
+}
+
+install_file() {
 	local src="$1"
 	local dest="$2"
 	local dir
 	dir="$(dirname "$dest")"
-	if [[ ! -d "$dir" ]]; then
-		if ! mkdir -p "$dir"; then
-			[[ "$SYSTEM" == 1 ]] || die "cannot create ${dir}"
-			sudo mkdir -p "$dir"
-		fi
-	fi
+	ensure_dir "$dir"
 	if [[ -w "$dir" ]]; then
 		install -m 0755 "$src" "$dest"
 	elif [[ "$SYSTEM" == 1 ]]; then
@@ -373,6 +406,27 @@ place_binary() {
 	else
 		die "cannot write ${dest}. Use a writable --prefix, or --system."
 	fi
+}
+
+link_cli() {
+	local target="$1"
+	local link="$2"
+	local dir
+	dir="$(dirname "$link")"
+	ensure_dir "$dir"
+	if [[ -w "$dir" ]]; then
+		ln -sfn "$target" "$link"
+	elif [[ "$SYSTEM" == 1 ]]; then
+		sudo ln -sfn "$target" "$link"
+	else
+		die "cannot write ${link}. Use a writable --prefix, or --system."
+	fi
+}
+
+install_payload() {
+	local src="$1"
+	install_file "$src" "$(app_binary)"
+	link_cli "$(app_binary)" "$(cli_link)"
 }
 
 verify_installed() {
@@ -398,97 +452,210 @@ EOF
 	exit 1
 }
 
-install_omarchy_extras() {
-	local dest="$1"
-	local apps="${XDG_DATA_HOME:-${HOME}/.local/share}/applications"
-	local autostart="${HOME}/.config/hypr/autostart.lua"
-	local line
-	mkdir -p "$apps"
-	cat >"${apps}/nova-letterbox.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=NOVA Letterbox
-Comment=1920x480 telemetry letterbox
-Exec=${dest} --fullscreen
-Terminal=false
-Categories=Utility;
-StartupNotify=false
-EOF
-	echo "Desktop entry: ${apps}/nova-letterbox.desktop"
-	line="o.launch_on_start(\"${dest} --fullscreen\")"
-	if [[ "$AUTOSTART" == 1 ]]; then
-		mkdir -p "$(dirname "$autostart")"
-		if [[ -f "$autostart" ]] && grep -qF 'nova-letterbox' "$autostart"; then
-			echo "Autostart already mentions nova-letterbox: ${autostart}"
-		else
-			if [[ ! -f "$autostart" ]]; then
-				printf '%s\n' '-- Extra autostart processes.' >"$autostart"
-			fi
-			printf '\n%s\n' "$line" >>"$autostart"
-			echo "Added Hyprland autostart: ${autostart}"
-			echo "Reload Hyprland, or log in again, to start the letterbox."
-		fi
+# Godot 4.3 uses application/config/name as the Wayland app_id and the X11
+# WM_CLASS class. That name is "NOVA Letterbox".
+WM_CLASS="NOVA Letterbox"
+
+desktop_exec_line() {
+	local omarchy="${1:-0}"
+	local bin
+	bin="$(cli_link)"
+	if [[ "$omarchy" == 1 ]]; then
+		printf '%s' "omarchy-launch-or-focus \"${WM_CLASS}\" \"${bin} --fullscreen\""
 	else
-		echo "Login autostart was not changed. Add this to ~/.config/hypr/autostart.lua, or re-run with --autostart:"
-		echo "  ${line}"
+		printf '%s' "${bin} --fullscreen"
 	fi
 }
 
+write_icon() {
+	local dest
+	dest="$(share_root)/icons/hicolor/scalable/apps/nova-letterbox.svg"
+	ensure_dir "$(dirname "$dest")"
+	cat >"$dest" <<'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="18" fill="#191a1c"/>
+  <circle cx="64" cy="64" r="46" fill="none" stroke="#c17d52" stroke-width="8"/>
+  <circle cx="64" cy="64" r="34" fill="#101114"/>
+  <line x1="64" y1="64" x2="98" y2="46" stroke="#e6a45a" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="5" fill="#e6a45a"/>
+  <circle cx="64" cy="64" r="2.2" fill="#101114"/>
+</svg>
+EOF
+	echo "Icon: ${dest}"
+}
+
+write_desktop() {
+	local exec_line dest
+	exec_line="$(desktop_exec_line "$OMARCHY")"
+	dest="$(share_root)/applications/nova-letterbox.desktop"
+	ensure_dir "$(dirname "$dest")"
+	cat >"$dest" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=NOVA Letterbox
+Comment=1920x480 telemetry letterbox
+Exec=${exec_line}
+Icon=nova-letterbox
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+StartupWMClass=${WM_CLASS}
+EOF
+	echo "Desktop entry: ${dest}"
+}
+
+refresh_desktop_caches() {
+	local share apps icons
+	share="$(share_root)"
+	apps="${share}/applications"
+	icons="${share}/icons/hicolor"
+	if command -v update-desktop-database >/dev/null 2>&1; then
+		update-desktop-database "$apps" >/dev/null 2>&1 || true
+	fi
+	if [[ -f "${icons}/index.theme" ]] && command -v gtk-update-icon-cache >/dev/null 2>&1; then
+		gtk-update-icon-cache -f -t "$icons" >/dev/null 2>&1 || true
+	fi
+}
+
+# kind and path of the Hyprland autostart file this machine will actually load.
+# Prints two lines: kind, then path.
+choose_autostart_target() {
+	local home="${1:-$HOME}"
+	local candidate
+	for candidate in \
+		"${home}/.config/omarchy/autostart.conf" \
+		"${home}/.config/omarchy/hypr/autostart.conf"
+	do
+		if [[ -f "$candidate" ]]; then
+			printf '%s\n%s\n' conf "$candidate"
+			return 0
+		fi
+	done
+	if [[ -f "${home}/.config/hypr/autostart.lua" || -f "${home}/.config/hypr/hyprland.lua" ]]; then
+		printf '%s\n%s\n' lua "${home}/.config/hypr/autostart.lua"
+		return 0
+	fi
+	printf '%s\n%s\n' conf "${home}/.config/hypr/autostart.conf"
+}
+
+append_marked_block() {
+	local file="$1"
+	local block="$2"
+	mkdir -p "$(dirname "$file")"
+	if [[ -f "$file" ]] && grep -qF 'nova-letterbox-begin' "$file"; then
+		echo "Already present: ${file}"
+		return 0
+	fi
+	if [[ ! -f "$file" ]]; then
+		: >"$file"
+	fi
+	printf '\n%s\n' "$block" >>"$file"
+	echo "Updated ${file}"
+}
+
+install_hypr_autostart() {
+	local home="${1:-$HOME}"
+	local kind path
+	local -a target
+	mapfile -t target < <(choose_autostart_target "$home")
+	kind="${target[0]}"
+	path="${target[1]}"
+	if [[ "$kind" == "lua" ]]; then
+		append_marked_block "$path" "$(cat <<'EOF'
+-- nova-letterbox-begin
+o.launch_on_start("nova-letterbox")
+-- nova-letterbox-end
+EOF
+)"
+		append_marked_block "${home}/.config/hypr/looknfeel.lua" "$(cat <<'EOF'
+-- nova-letterbox-begin
+-- Fullscreen on the 1920x480 HDMI output. Change the monitor name if hyprctl differs.
+o.window({ class = "^NOVA Letterbox$" }, { fullscreen = true, monitor = "HDMI-A-1" })
+-- nova-letterbox-end
+EOF
+)"
+		echo "Omarchy loads ~/.config/hypr/autostart.lua. Reload Hyprland, or log in again."
+		return 0
+	fi
+	append_marked_block "$path" "$(cat <<'EOF'
+# nova-letterbox-begin
+exec-once = nova-letterbox
+windowrule {
+    name = nova-letterbox
+    match:class = ^(NOVA Letterbox)$
+    fullscreen = true
+    monitor = HDMI-A-1
+}
+# nova-letterbox-end
+EOF
+)"
+	echo "Reload Hyprland, or log in again. The monitor name in the window rule is HDMI-A-1."
+}
+
 print_next_steps() {
-	local dest="$1"
+	local bin
+	bin="$(cli_link)"
 	cat <<EOF
 
-Installed: ${dest}
+Installed: $(app_binary)
+Command: ${bin}
 
 Fullscreen:
-  ${dest} --fullscreen
+  ${bin} --fullscreen
 
 Engine health check (no window):
-  ${dest} --version
+  ${bin} --version
 
 Letterbox version line, then exit:
-  NOVA_PRINT_VERSION=1 ${dest}
+  NOVA_PRINT_VERSION=1 ${bin}
 
 Keys, with the window focused: 1 Simple, 2 Complete, Tab toggles.
 The project uses the GL Compatibility renderer.
 
-Pi HDMI 1920×480, blanking, labwc/wayfire, and a systemd user unit:
+Pi HDMI 1920×480, blanking, and labwc/wayfire:
   https://github.com/${REPO}/blob/main/docs/pi-kiosk.md
 EOF
-	if os_release_is_omarchy /etc/os-release; then
-		if [[ "$OMARCHY" != 1 ]]; then
-			cat <<EOF
+	if [[ "$OMARCHY" == 1 ]]; then
+		cat <<EOF
 
-Omarchy detected. For a desktop entry and optional Hyprland autostart, see
-  https://github.com/${REPO}/blob/main/docs/omarchy.md
-or run install-omarchy.sh (same binary, plus the Omarchy files).
+Omarchy: Super+Space, then NOVA Letterbox.
+The desktop entry focuses the existing window when it is already open.
 EOF
+		if [[ "$AUTOSTART" != 1 ]]; then
+			echo "Login autostart was not added. Re-run with --autostart to start it with Hyprland."
 		fi
+		echo "Notes: https://github.com/${REPO}/blob/main/docs/omarchy.md"
+	elif os_release_is_omarchy /etc/os-release; then
+		echo "Omarchy detected. See https://github.com/${REPO}/blob/main/docs/omarchy.md"
 	fi
 	case ":${PATH}:" in
-		*":$(dirname "$dest"):"*) ;;
+		*":$(dirname "$bin"):"*) ;;
 		*)
 			echo
 			echo "That directory is not on PATH. For this shell:"
-			echo "  export PATH=\"$(dirname "$dest"):\$PATH\""
+			echo "  export PATH=\"$(dirname "$bin"):\$PATH\""
 			;;
 	esac
 }
 
 main() {
-	local arch asset dest tag tmp prefix
+	local arch asset tag tmp
 	parse_args "$@"
 	require_linux
+	if os_release_is_omarchy /etc/os-release; then
+		OMARCHY=1
+	fi
 	command -v python3 >/dev/null 2>&1 || die "python3 is required to check the downloaded ELF"
 	arch="$(detect_arch)"
 	asset="$(asset_for_arch "$arch")"
-	prefix="$(resolve_prefix)"
-	dest="${prefix}/bin/nova-letterbox"
 	tag="$(normalize_version_tag "${NOVA_VERSION:-}")"
 	tmp="$(mktemp)"
 	trap 'rm -f "$tmp"' EXIT
 
-	echo "Installing NOVA Letterbox for ${arch} to ${dest}"
+	echo "Installing NOVA Letterbox for ${arch}"
+	echo "  binary: $(app_binary)"
+	echo "  command: $(cli_link)"
 	if [[ "${NOVA_FROM_SOURCE:-}" == "1" ]]; then
 		install_from_source "$arch" "$tmp"
 	else
@@ -499,16 +666,22 @@ main() {
 	fi
 	[[ -s "$tmp" ]] || die "download was empty"
 	verify_elf "$tmp" "$arch"
-	place_binary "$tmp" "$dest"
-	verify_installed "$dest" "$arch"
-	if [[ "$OMARCHY" == 1 ]]; then
-		install_omarchy_extras "$dest"
+	install_payload "$tmp"
+	verify_installed "$(app_binary)" "$arch"
+	if [[ ! -L "$(cli_link)" ]]; then
+		die "expected a symlink at $(cli_link)"
 	fi
-	print_next_steps "$dest"
+	write_icon
+	write_desktop
+	refresh_desktop_caches
+	if [[ "$AUTOSTART" == 1 ]]; then
+		install_hypr_autostart "$HOME"
+	fi
+	print_next_steps
 	rm -f "$tmp"
 	if [[ "$FULLSCREEN" == 1 ]]; then
 		echo "Launching fullscreen."
-		exec "$dest" --fullscreen
+		exec "$(cli_link)" --fullscreen
 	fi
 }
 

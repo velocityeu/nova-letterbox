@@ -52,9 +52,11 @@ fi
 rm -f "$omarchy" "$arch"
 
 parse_args --fullscreen --system --autostart --prefix /tmp/nova-prefix
-[[ "$FULLSCREEN" == 1 && "$SYSTEM" == 1 && "$OMARCHY" == 1 && "$AUTOSTART" == 1 ]] || fail "flags"
+[[ "$FULLSCREEN" == 1 && "$SYSTEM" == 1 && "$AUTOSTART" == 1 && "$OMARCHY" == 0 ]] || fail "flags"
 [[ "$PREFIX" == /tmp/nova-prefix ]] || fail "prefix"
 [[ "$(resolve_prefix)" == /tmp/nova-prefix ]] || fail "prefix wins"
+parse_args --omarchy
+[[ "$OMARCHY" == 1 && "$AUTOSTART" == 0 ]] || fail "omarchy flag"
 parse_args --system
 [[ "$(resolve_prefix)" == /usr/local ]] || fail "system prefix"
 PREFIX=""
@@ -112,19 +114,75 @@ rm -f "$json"
 require_linux
 
 home="$(mktemp -d)"
+payload="$(mktemp)"
+printf 'not-really-an-elf\n' >"$payload"
 HOME="$home" bash -c '
+	set -euo pipefail
 	source ./install.sh
-	AUTOSTART=1
-	install_omarchy_extras "$1"
-	install_omarchy_extras "$1"
-' bash "${home}/bin/nova-letterbox"
+	parse_args
+	install_payload "$1"
+	OMARCHY=0
+	write_icon
+	write_desktop
+	OMARCHY=1
+	write_desktop
+' bash "$payload"
+[[ -f "${home}/.local/share/nova-letterbox/nova-letterbox" ]] || fail "payload missing"
+[[ -L "${home}/.local/bin/nova-letterbox" ]] || fail "cli is not a symlink"
+[[ "$(readlink "${home}/.local/bin/nova-letterbox")" == "${home}/.local/share/nova-letterbox/nova-letterbox" ]] || fail "symlink target"
 desktop="${home}/.local/share/applications/nova-letterbox.desktop"
-autostart="${home}/.config/hypr/autostart.lua"
+icon="${home}/.local/share/icons/hicolor/scalable/apps/nova-letterbox.svg"
 [[ -f "$desktop" ]] || fail "desktop entry missing"
-grep -q "Exec=${home}/bin/nova-letterbox --fullscreen" "$desktop" || fail "desktop exec"
-count="$(grep -c 'nova-letterbox' "$autostart")"
-[[ "$count" == 1 ]] || fail "autostart should be written once, got ${count}"
-rm -rf "$home"
+[[ -f "$icon" ]] || fail "icon missing"
+grep -q '^Name=NOVA Letterbox$' "$desktop" || fail "desktop name"
+grep -q '^StartupWMClass=NOVA Letterbox$' "$desktop" || fail "wm class"
+grep -q '^Icon=nova-letterbox$' "$desktop" || fail "icon key"
+grep -q "omarchy-launch-or-focus" "$desktop" || fail "launch-or-focus exec"
+grep -q "${home}/.local/bin/nova-letterbox --fullscreen" "$desktop" || fail "desktop exec path"
+grep -q '<svg' "$icon" || fail "icon svg"
+
+# Default Hyprland: exec-once in autostart.conf, written once.
+HOME="$home" bash -c '
+	set -euo pipefail
+	source ./install.sh
+	parse_args
+	install_hypr_autostart "$HOME"
+	install_hypr_autostart "$HOME"
+'
+conf="${home}/.config/hypr/autostart.conf"
+grep -q '^exec-once = nova-letterbox$' "$conf" || fail "exec-once"
+grep -q 'fullscreen = true' "$conf" || fail "window rule"
+[[ "$(grep -c 'nova-letterbox-begin' "$conf")" == 1 ]] || fail "conf autostart duplicated"
+
+# Existing Omarchy-managed conf wins over a lua session file.
+mkdir -p "${home}/.config/omarchy" "${home}/.config/hypr"
+printf '%s\n' '-- existing' >"${home}/.config/hypr/autostart.lua"
+printf '%s\n' '# managed' >"${home}/.config/omarchy/autostart.conf"
+HOME="$home" bash -c '
+	set -euo pipefail
+	source ./install.sh
+	parse_args
+	install_hypr_autostart "$HOME"
+'
+grep -q '^exec-once = nova-letterbox$' "${home}/.config/omarchy/autostart.conf" || fail "omarchy conf"
+if grep -q 'nova-letterbox-begin' "${home}/.config/hypr/autostart.lua"; then
+	fail "lua autostart should stay untouched when omarchy conf exists"
+fi
+
+# Current Omarchy lua session: launch line plus looknfeel window rule.
+rm -f "${home}/.config/omarchy/autostart.conf"
+printf '%s\n' 'require("hypr.autostart")' >"${home}/.config/hypr/hyprland.lua"
+HOME="$home" bash -c '
+	set -euo pipefail
+	source ./install.sh
+	parse_args
+	install_hypr_autostart "$HOME"
+	install_hypr_autostart "$HOME"
+'
+grep -q 'o.launch_on_start("nova-letterbox")' "${home}/.config/hypr/autostart.lua" || fail "lua launch"
+grep -q 'monitor = "HDMI-A-1"' "${home}/.config/hypr/looknfeel.lua" || fail "lua window rule"
+[[ "$(grep -c 'nova-letterbox-begin' "${home}/.config/hypr/autostart.lua")" == 1 ]] || fail "lua duplicated"
+rm -rf "$home" "$payload"
 
 if GITHUB_REPOSITORY=velocityeu/nova-letterbox GITHUB_SHA=abc GITHUB_REF_TYPE=branch \
 	bash ./scripts/publish-release.sh >/dev/null 2>&1; then

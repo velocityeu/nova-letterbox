@@ -1,26 +1,32 @@
 # Omarchy
 
-[Omarchy](https://omarchy.org/) is the Arch-based Hyprland desktop. NOVA Letterbox uses the same Linux x86_64 (or aarch64) release binary as the Pi.
+[Omarchy](https://omarchy.org/) is the Arch-based Hyprland desktop. The install is the same Linux binary as the Pi: no pacman package and no AUR package.
 
 The repo is private. `GH_TOKEN` or `gh auth login` is required before any of the commands below.
 
 ## Install
 
-From a checkout:
-
 ```bash
 ./install-omarchy.sh
 ```
 
-Fullscreen immediately:
+That is `install.sh --omarchy`. On a machine whose `/etc/os-release` already says Omarchy, plain `install.sh` does the same layout.
+
+What it writes:
+
+| Path | What |
+| --- | --- |
+| `~/.local/share/nova-letterbox/nova-letterbox` | Release binary, PCK embedded |
+| `~/.local/bin/nova-letterbox` | Symlink to that binary |
+| `~/.local/share/applications/nova-letterbox.desktop` | Native desktop entry |
+| `~/.local/share/icons/hicolor/scalable/apps/nova-letterbox.svg` | Icon |
+
+The desktop entry is named **NOVA Letterbox**. `Exec` calls `omarchy-launch-or-focus` so Super+Space focuses the window when it is already open, and launches it otherwise. It is not a Chromium webapp. `StartupWMClass=NOVA Letterbox` matches the Godot 4.3 window class (`application/config/name`, also the Wayland app id).
+
+After install, open it from the launcher: **Super+Space**, then NOVA Letterbox. Nothing starts at login unless you pass `--autostart`.
 
 ```bash
 ./install-omarchy.sh --fullscreen
-```
-
-Start the letterbox on every Hyprland login (appends one line to `~/.config/hypr/autostart.lua`):
-
-```bash
 ./install-omarchy.sh --autostart
 ```
 
@@ -31,41 +37,22 @@ gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh \
   -H "Accept: application/vnd.github.raw" | bash -s -- --autostart
 ```
 
-`install.sh` on its own detects Omarchy (`NAME` or `ID` in `/etc/os-release` contains `omarchy`) and prints these next steps. It does not edit Hyprland config unless you pass `--omarchy` / `--autostart`.
+## Autostart and the 1920×480 output
 
-What `--omarchy` writes:
+`--autostart` is optional. It does not install a systemd user service.
 
-- Binary: `~/.local/bin/nova-letterbox` (or `/usr/local/bin` with `--system`)
-- Desktop entry: `~/.local/share/applications/nova-letterbox.desktop`  
-  The launcher runs `nova-letterbox --fullscreen`. A copy of the entry lives in `packaging/omarchy/nova-letterbox.desktop`.
+- If `~/.config/omarchy/autostart.conf` or `~/.config/omarchy/hypr/autostart.conf` already exists, it appends `exec-once = nova-letterbox` and a fullscreen window rule on monitor `HDMI-A-1`.
+- If the session is current Omarchy (`~/.config/hypr/hyprland.lua` / `autostart.lua`), that `.conf` file is not what Hyprland loads. The installer appends `o.launch_on_start("nova-letterbox")` to `~/.config/hypr/autostart.lua` and the window rule to `~/.config/hypr/looknfeel.lua`.
+- Otherwise it appends the `exec-once` block to `~/.config/hypr/autostart.conf`.
 
-What `--autostart` appends, once, to `~/.config/hypr/autostart.lua`:
-
-```lua
-o.launch_on_start("/home/you/.local/bin/nova-letterbox --fullscreen")
-```
-
-That is the current Omarchy hook (`o.launch_on_start` in the user autostart file). It is not an edit under `/usr/share/omarchy`, which the pacman package overwrites. The example file is `packaging/omarchy/autostart.lua`. Reload Hyprland, or log in again, after adding it.
-
-## Monitor
-
-The letterbox is 1920×480. Put the side panel on its own output in `~/.config/hypr/monitors.lua`:
+The window rule is fullscreen on `HDMI-A-1`. Check the real name with `hyprctl monitors` and edit the monitor if it differs. The panel mode belongs in `~/.config/hypr/monitors.lua`:
 
 ```lua
 hl.monitor({ output = "HDMI-A-1", mode = "1920x480@60", position = "auto", scale = 1 })
 ```
 
-`hyprctl monitors all` shows the output name and the modes the panel actually advertises. This project does not rotate a portrait 480×1920 mode; set a landscape mode, or a transform, in that file.
+`hyprctl monitors all` lists the modes the panel advertises. This project does not rotate a portrait 480×1920 mode.
 
 Keys, with the window focused: `1` Simple, `2` Complete, `Tab` toggles. Renderer is GL Compatibility. If the window does not map, try `nova-letterbox --fullscreen --display-driver x11`.
 
-## pacman
-
-`packaging/omarchy/PKGBUILD` installs the prebuilt binary to `/usr/bin/nova-letterbox` and the desktop file to `/usr/share/applications`. It is a local package, not an AUR package. Set `pkgver` to a published tag (without the `v`), then:
-
-```bash
-cd packaging/omarchy
-makepkg -si
-```
-
-`makepkg` calls `gh release download` for `nova-letterbox-linux-x86_64` or `nova-letterbox-linux-arm64`. Until a `v*` release exists, point `pkgver` at a tag you have published, or use `install-omarchy.sh` instead.
+Examples of the lines the installer appends are in `packaging/omarchy/`.

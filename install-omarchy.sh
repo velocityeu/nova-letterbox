@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Omarchy (Arch + Hyprland) install. Same release binary as install.sh,
-# plus a desktop entry. Pass --autostart to append o.launch_on_start.
+# Omarchy (Arch + Hyprland) install. Same release binary and paths as install.sh.
+# Pass --autostart for Hyprland login autostart and the 1920x480 window rule.
 #
 #   ./install-omarchy.sh
 #   ./install-omarchy.sh --autostart

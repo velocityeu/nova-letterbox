@@ -13,7 +13,7 @@ gh api repos/velocityeu/nova-letterbox/contents/install.sh \
   -H "Accept: application/vnd.github.raw" | bash
 ```
 
-That writes `~/.local/bin/nova-letterbox`. A `v*` release is the default download. Until one exists, the script uses the `continuous` prerelease built from `main` and says so.
+That writes the binary to `~/.local/share/nova-letterbox/nova-letterbox` and a symlink at `~/.local/bin/nova-letterbox`. A `v*` release is the default download. Until one exists, the script uses the `continuous` prerelease built from `main` and says so.
 
 ```bash
 nova-letterbox --fullscreen
@@ -25,8 +25,9 @@ nova-letterbox --version
 Copying a binary by hand still works. From a machine that has exported **Linux Pi ARM64** (or downloaded `nova-letterbox-linux-arm64`):
 
 ```bash
-scp dist/nova-letterbox-linux-arm64 pi@raspberrypi:~/.local/bin/nova-letterbox
-ssh pi@raspberrypi 'chmod +x ~/.local/bin/nova-letterbox'
+ssh pi@raspberrypi 'mkdir -p ~/.local/share/nova-letterbox ~/.local/bin'
+scp dist/nova-letterbox-linux-arm64 pi@raspberrypi:~/.local/share/nova-letterbox/nova-letterbox
+ssh pi@raspberrypi 'chmod +x ~/.local/share/nova-letterbox/nova-letterbox && ln -sfn ~/.local/share/nova-letterbox/nova-letterbox ~/.local/bin/nova-letterbox'
 ```
 
 ## HDMI: landscape 1920×480
@@ -68,7 +69,7 @@ If the window never appears on Wayland, try XWayland: `nova-letterbox --fullscre
 
 ## Optional systemd user unit
 
-Use this when the desktop session is systemd-managed and has already imported `WAYLAND_DISPLAY` or `DISPLAY`. The unit is `packaging/pi/nova-letterbox.service`.
+Prefer the compositor autostart above. Use the user service only when the panel should come back after a crash and the session has already imported `WAYLAND_DISPLAY` or `DISPLAY`. The unit is `packaging/pi/nova-letterbox.service`. It starts the symlink.
 
 ```bash
 mkdir -p ~/.config/systemd/user
