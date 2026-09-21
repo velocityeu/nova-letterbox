@@ -32,6 +32,12 @@ func _ready() -> void:
 		resized.connect(queue_redraw)
 
 
+func _format_axis(v: float) -> String:
+	if y_max >= 10.0:
+		return str(int(round(v)))
+	return "%.1f" % v
+
+
 func _draw() -> void:
 	if _font == null:
 		_font = NovaTheme.tracked(NovaTheme.REGULAR, 0)
@@ -47,7 +53,7 @@ func _draw() -> void:
 		var t := float(step)
 		var y := plot.position.y + plot.size.y * (1.0 - t)
 		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), NovaPalette.GRID, 1.0, true)
-		var label := str(int(round(y_max * t)))
+		var label := _format_axis(y_max * t)
 		var label_size := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
 		draw_string(
 			_font,

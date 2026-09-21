@@ -4,6 +4,7 @@ extends Control
 ## Complete letterbox. Positions are in a 1920×480 design space, scaled to fit
 ## the live viewport so the ping dial and the disk card stay on screen.
 
+const Metrics = preload("res://scripts/linux_metrics.gd")
 const DESIGN := Vector2(1920, 480)
 const _WEEKDAYS: PackedStringArray = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const _MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -12,14 +13,18 @@ func _ready() -> void:
 	_style()
 	if not resized.is_connected(_layout):
 		resized.connect(_layout)
-	_apply_demo()
 	_tick_clock()
-	if not Engine.is_editor_hint():
-		var timer := Timer.new()
-		timer.wait_time = 1.0
-		timer.autostart = true
-		timer.timeout.connect(_tick_clock)
-		add_child(timer)
+	if Engine.is_editor_hint():
+		call_deferred("_layout")
+		return
+	($Ping as DialGauge).readout_decimals = 1
+	Telemetry.updated.connect(_apply)
+	_apply()
+	var timer := Timer.new()
+	timer.wait_time = 1.0
+	timer.autostart = true
+	timer.timeout.connect(_tick_clock)
+	add_child(timer)
 	call_deferred("_layout")
 
 
@@ -72,57 +77,118 @@ func _style() -> void:
 	($EthDot as GlyphIcon).glyph_color = NovaPalette.AMBER
 
 
-func _apply_demo() -> void:
-	var data := DemoTelemetry.complete()
-	($Download as DialGauge).value = float(data.download_mbps)
-	($Upload as DialGauge).value = float(data.upload_mbps)
-	($Ping as DialGauge).value = float(data.ping_ms)
-	var cpu := $Cpu as MiniRing
-	var ram := $Ram as MiniRing
-	cpu.ratio = float(data.cpu)
-	ram.ratio = float(data.ram)
-	cpu.caption = "CPU"
-	ram.caption = "RAM"
-	cpu.icon_kind = GlyphIcon.Kind.CHIP
-	ram.icon_kind = GlyphIcon.Kind.MEMORY
+func _exit_tree() -> void:
+	if Engine.is_editor_hint():
+		return
+	if Telemetry.updated.is_connected(_apply):
+		Telemetry.updated.disconnect(_apply)
+
+
+func _apply() -> void:
+	var data: Dictionary = Telemetry.snapshot()
+	_raise_dial($Download as DialGauge, float(data.get("download_mbps", 0.0)))
+	_raise_dial($Upload as DialGauge, float(data.get("upload_mbps", 0.0)))
+	var ping := float(data.get("ping_ms", -1.0))
+	_raise_dial($Ping as DialGauge, 0.0 if ping < 0.0 else ping)
+	var cpu_ring := $Cpu as MiniRing
+	var ram_ring := $Ram as MiniRing
+	var cpu := float(data.get("cpu", -1.0))
+	var ram := float(data.get("ram", -1.0))
+	cpu_ring.ratio = 0.0 if cpu < 0.0 else cpu
+	ram_ring.ratio = 0.0 if ram < 0.0 else ram
+	cpu_ring.caption = "CPU"
+	ram_ring.caption = "RAM"
+	cpu_ring.icon_kind = GlyphIcon.Kind.CHIP
+	ram_ring.icon_kind = GlyphIcon.Kind.MEMORY
 
 	var spark := $Spark as Sparkline
 	var samples := PackedFloat32Array()
-	for sample in data.throughput:
-		samples.append(float(sample))
+	var peak := 0.0
+	for sample in data.get("throughput", []):
+		var mbps_value := float(sample)
+		samples.append(mbps_value)
+		peak = maxf(peak, mbps_value)
 	spark.samples = samples
-	spark.y_max = 100.0
+	spark.y_max = float(Metrics.spark_y_max(peak))
 	spark.title = "THROUGHPUT (Mbps)"
 	var labels := PackedStringArray()
-	for label in data.throughput_labels:
+	for label in data.get("throughput_labels", []):
 		labels.append(str(label))
 	spark.x_labels = labels
 
+	var loc := _dash(str(data.get("loc_ip", "")))
+	var router := _dash(str(data.get("router_ip", "")))
+	var pub := _dash(str(data.get("pub_ip", "")))
 	var path := $Path as NetworkPath
 	path.left_title = "PI"
-	path.left_addr = str(data.loc_ip)
+	path.left_addr = loc
 	path.mid_title = "ROUTER"
-	path.mid_addr = str(data.router_ip)
+	path.mid_addr = router
 	path.right_title = "INTERNET"
-	path.right_addr = str(data.pub_ip)
+	path.right_addr = pub
+	$PubVal.text = pub
+	$LocVal.text = loc
+	$VpnState.text = "CONNECTED" if bool(data.get("vpn_connected", false)) else "OFFLINE"
 
-	$PubVal.text = str(data.pub_ip)
-	$LocVal.text = str(data.loc_ip)
-	$VpnState.text = "CONNECTED" if bool(data.vpn_connected) else "OFFLINE"
-	$WifiSsid.text = str(data.ssid)
-	$WifiBand.text = str(data.band)
-	$WifiRssi.text = "%d dBm" % int(data.rssi_dbm)
-	($SignalIcon as GlyphIcon).level = int(data.signal_level)
-	$EthRate.text = str(data.eth_rate)
-	$EthLink.text = str(data.eth_link)
+	if bool(data.get("wifi_connected", false)):
+		var ssid := str(data.get("ssid", ""))
+		$WifiSsid.text = ssid if not ssid.is_empty() else "Connected"
+		var band := str(data.get("band", ""))
+		$WifiBand.text = band if not band.is_empty() else "N/A"
+		if bool(data.get("rssi_known", false)):
+			$WifiRssi.text = "%d dBm" % int(data.get("rssi_dbm", 0))
+		else:
+			$WifiRssi.text = "—"
+		($SignalIcon as GlyphIcon).level = int(data.get("signal_level", 0))
+	else:
+		$WifiSsid.text = "Not connected"
+		$WifiBand.text = "N/A"
+		$WifiRssi.text = "—"
+		($SignalIcon as GlyphIcon).level = 0
 
-	var temp_c := float(data.temp_c)
-	var temp_scale := maxf(float(data.temp_scale_c), 1.0)
-	$TempVal.text = "%.1f °C" % temp_c
-	($TempBar as MeterBar).ratio = clampf(temp_c / temp_scale, 0.0, 1.0)
-	var disk_ratio := float(data.disk)
-	$DiskVal.text = str(int(round(disk_ratio * 100.0))) + "%"
-	($DiskBar as MeterBar).ratio = disk_ratio
+	var rate := str(data.get("eth_rate", ""))
+	var link := str(data.get("eth_link", ""))
+	if not bool(data.get("eth_present", false)):
+		$EthRate.text = "N/A"
+		$EthLink.text = "NO LINK"
+	elif rate.is_empty():
+		$EthRate.text = "—"
+		$EthLink.text = link if not link.is_empty() else "LINK: down"
+	else:
+		$EthRate.text = rate
+		$EthLink.text = link
+	($EthDot as GlyphIcon).glyph_color = NovaPalette.AMBER if bool(data.get("eth_up", false)) else NovaPalette.STEEL
+
+	if bool(data.get("temp_available", false)):
+		var temp_c := float(data.get("temp_c", 0.0))
+		var temp_scale := maxf(float(data.get("temp_scale_c", 85.0)), 1.0)
+		$TempVal.text = "%.1f °C" % temp_c
+		($TempBar as MeterBar).ratio = clampf(temp_c / temp_scale, 0.0, 1.0)
+	else:
+		$TempVal.text = "N/A"
+		($TempBar as MeterBar).ratio = 0.0
+
+	var disk_ratio := float(data.get("disk", -1.0))
+	if disk_ratio < 0.0:
+		$DiskVal.text = "N/A"
+		($DiskBar as MeterBar).ratio = 0.0
+	else:
+		$DiskVal.text = str(int(round(disk_ratio * 100.0))) + "%"
+		($DiskBar as MeterBar).ratio = disk_ratio
+
+
+func _dash(text: String) -> String:
+	return text if not text.is_empty() else "—"
+
+
+func _raise_dial(dial: DialGauge, value: float) -> void:
+	if value > dial.max_value:
+		var scale: Dictionary = Metrics.gauge_scale(value, dial.max_value) as Dictionary
+		dial.max_value = float(scale.max)
+		dial.major_step = float(scale.major)
+		dial.minor_step = float(scale.minor)
+		dial.label_step = float(scale.label)
+	dial.value = value
 
 
 func _tick_clock() -> void:
