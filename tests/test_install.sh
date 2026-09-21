@@ -206,4 +206,35 @@ if GITHUB_REPOSITORY=velocityeu/nova-letterbox GITHUB_SHA=abc GITHUB_REF_TYPE=br
 	fail "publish should fail without dist binaries"
 fi
 
+# Success must exit 0. The old EXIT trap expanded a local after main returned.
+kept="$(mktemp)"
+printf 'keep\n' >"$kept"
+bash -c '
+	set -euo pipefail
+	source ./install.sh
+	begin_install_tmp
+	printf x > "$_NOVA_INSTALL_TMP"
+	path="$_NOVA_INSTALL_TMP"
+	end_install_tmp
+	[[ -z "${_NOVA_INSTALL_TMP}" ]] || exit 2
+	[[ ! -e "$path" ]] || exit 3
+' || fail "successful cleanup exited non-zero"
+[[ -f "$kept" ]] || fail "cleanup removed an unrelated file"
+
+early="$(mktemp)"
+printf 'gone\n' >"$early"
+set +e
+bash -c '
+	set -euo pipefail
+	source ./install.sh
+	_NOVA_INSTALL_TMP="$1"
+	trap cleanup_install_tmp EXIT
+	exit 1
+' bash "$early" >/dev/null
+early_status=$?
+set -e
+[[ "$early_status" -eq 1 ]] || fail "early exit status ${early_status}"
+[[ ! -e "$early" ]] || fail "early exit left the temp file"
+rm -f "$kept"
+
 echo "OK"

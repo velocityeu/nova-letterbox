@@ -23,6 +23,27 @@ FULLSCREEN=0
 OMARCHY=0
 AUTOSTART=0
 
+# Global so the EXIT trap can still see it after main returns. A local
+# disappears first, and set -u then aborts a successful install.
+_NOVA_INSTALL_TMP=""
+
+cleanup_install_tmp() {
+	if [[ -n "${_NOVA_INSTALL_TMP:-}" ]]; then
+		rm -f "${_NOVA_INSTALL_TMP}"
+	fi
+	_NOVA_INSTALL_TMP=""
+}
+
+begin_install_tmp() {
+	_NOVA_INSTALL_TMP="$(mktemp)"
+	trap cleanup_install_tmp EXIT
+}
+
+end_install_tmp() {
+	cleanup_install_tmp
+	trap - EXIT
+}
+
 die() {
 	echo "error: $*" >&2
 	exit 1
@@ -640,7 +661,7 @@ EOF
 }
 
 main() {
-	local arch asset tag tmp
+	local arch asset tag
 	parse_args "$@"
 	require_linux
 	if os_release_is_omarchy /etc/os-release; then
@@ -650,23 +671,22 @@ main() {
 	arch="$(detect_arch)"
 	asset="$(asset_for_arch "$arch")"
 	tag="$(normalize_version_tag "${NOVA_VERSION:-}")"
-	tmp="$(mktemp)"
-	trap 'rm -f "$tmp"' EXIT
+	begin_install_tmp
 
 	echo "Installing NOVA Letterbox for ${arch}"
 	echo "  binary: $(app_binary)"
 	echo "  command: $(cli_link)"
 	if [[ "${NOVA_FROM_SOURCE:-}" == "1" ]]; then
-		install_from_source "$arch" "$tmp"
+		install_from_source "$arch" "$_NOVA_INSTALL_TMP"
 	else
-		if ! download_asset "$tag" "$asset" "$tmp"; then
+		if ! download_asset "$tag" "$asset" "$_NOVA_INSTALL_TMP"; then
 			auth_hint
 			die "could not download ${asset}"
 		fi
 	fi
-	[[ -s "$tmp" ]] || die "download was empty"
-	verify_elf "$tmp" "$arch"
-	install_payload "$tmp"
+	[[ -s "$_NOVA_INSTALL_TMP" ]] || die "download was empty"
+	verify_elf "$_NOVA_INSTALL_TMP" "$arch"
+	install_payload "$_NOVA_INSTALL_TMP"
 	verify_installed "$(app_binary)" "$arch"
 	if [[ ! -L "$(cli_link)" ]]; then
 		die "expected a symlink at $(cli_link)"
@@ -678,7 +698,7 @@ main() {
 		install_hypr_autostart "$HOME"
 	fi
 	print_next_steps
-	rm -f "$tmp"
+	end_install_tmp
 	if [[ "$FULLSCREEN" == 1 ]]; then
 		echo "Launching fullscreen."
 		exec "$(cli_link)" --fullscreen
