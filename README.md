@@ -32,7 +32,7 @@ Requires **Godot 4.3 or newer** (4.x). The project uses the GL Compatibility ren
 godot --path .
 ```
 
-3. Press **F5** (or the Play button) to run. The window is fixed at **1920×480**.
+3. Press **F5** (or the Play button) to run. The window is fixed at **1920×480**. The runnable export preset is **Linux Desktop** (x86_64).
 
 `project.godot` sets:
 
@@ -41,25 +41,48 @@ godot --path .
 - hiDPI scaling off, so one viewport pixel is one window pixel on the panel
 - GL Compatibility for desktop and mobile
 
-## Raspberry Pi 5 kiosk
+## Export release binaries
 
-High-level only. Follow Waveshare's HDMI guide for your exact 8.8" side-monitor revision — timings differ by panel and are not stored in this repo.
+Presets are in `export_presets.cfg`. Rebuilds need **Godot 4.3.stable** and the matching Linux export templates (`linux_release.x86_64` and `linux_release.arm64`). Output goes under `build/`, which is gitignored.
 
-1. Use 64-bit Raspberry Pi OS with a desktop session.
-2. Configure the HDMI output so the desktop framebuffer is **landscape 1920×480**. The panel enumerates as portrait 480×1920; rotate or transpose it in the compositor (or with the panel's documented timing) before launching NOVA. Godot does not rotate the buffer itself.
-3. Turn screen blanking off in the desktop power settings so the panel stays lit.
-4. Run fullscreen from the compositor autostart (labwc, wayfire, or similar):
+| Preset | Architecture | Binary | Editor Play |
+| --- | --- | --- | --- |
+| **Linux Desktop** | x86_64 | `build/linux-x86_64/nova-letterbox.x86_64` | yes |
+| **Linux Pi ARM64** | arm64 | `build/linux-arm64/nova-letterbox.arm64` | no |
+
+With `godot` (4.3.stable) on `PATH`:
 
 ```bash
-godot --fullscreen --path /home/pi/nova-letterbox
+./scripts/export-linux.sh
 ```
 
-Install a Godot 4 Linux build on the Pi, or export a Linux binary from the editor. No credentials, API tokens, or device secrets belong in this project.
+One preset at a time (the output directory must exist; Godot 4.3 will not create it):
+
+```bash
+mkdir -p build/linux-x86_64 build/linux-arm64
+godot --headless --path . --export-release "Linux Desktop" build/linux-x86_64/nova-letterbox.x86_64
+godot --headless --path . --export-release "Linux Pi ARM64" build/linux-arm64/nova-letterbox.arm64
+```
+
+The Pi preset embeds the PCK and includes **ETC2/ASTC** (GLES on the Pi) with **S3TC/BPTC** as a secondary. Godot 4.3 does not split those pairs into separate checkboxes.
+
+## Raspberry Pi 5 kiosk
+
+Copy `build/linux-arm64/nova-letterbox.arm64` to the Pi, `chmod +x`, and run it fullscreen. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, keys, and the 4.3.stable rebuild command — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+
+```bash
+./nova-letterbox.arm64 --fullscreen
+```
+
+No credentials, API tokens, or device secrets belong in this project.
 
 ## Layout
 
 ```
 project.godot              1920×480 window, GL Compatibility, main scene
+export_presets.cfg         Linux Desktop (x86_64) and Linux Pi ARM64
+scripts/export-linux.sh    headless release export when godot is on PATH
+docs/pi-kiosk.md           copy, chmod, HDMI, blanking, fullscreen
 scenes/main.tscn           boots Simple; switches views
 scenes/simple_view.tscn    default letterbox
 scenes/complete_view.tscn  alternate letterbox
