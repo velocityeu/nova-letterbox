@@ -47,7 +47,7 @@ nova-letterbox --fullscreen
 With the window focused:
 
 - `1` Simple · `2` Complete · `Tab` toggle
-- `Esc` or `Q` quit
+- `Esc` or `Q` quit · `F11` toggle fullscreen
 
 ```bash
 NOVA_PRINT_VERSION=1 nova-letterbox
@@ -104,7 +104,7 @@ export NOVA_VERSION=continuous  # rolling build from main
 With the window focused:
 
 - `1` Simple · `2` Complete · `Tab` toggle
-- `Esc` or `Q` quit
+- `Esc` or `Q` quit · `F11` toggle fullscreen
 
 The cursor hides while the window is fullscreen.
 

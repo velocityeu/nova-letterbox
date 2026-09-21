@@ -44,6 +44,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_TAB:
 			_show_mode(Mode.COMPLETE if mode == Mode.SIMPLE else Mode.SIMPLE)
 			get_viewport().set_input_as_handled()
+		KEY_ESCAPE, KEY_Q:
+			get_tree().quit()
+			get_viewport().set_input_as_handled()
+		KEY_F11:
+			_toggle_fullscreen()
+			get_viewport().set_input_as_handled()
 
 
 func _show_mode(next: Mode) -> void:
@@ -60,10 +66,19 @@ func _show_mode(next: Mode) -> void:
 	_update_cursor()
 
 
+func _toggle_fullscreen() -> void:
+	var next := DisplayServer.WINDOW_MODE_WINDOWED if _is_fullscreen() else DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(next)
+	_update_cursor()
+
+
 func _update_cursor() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if _is_fullscreen() else Input.MOUSE_MODE_VISIBLE
+
+
+func _is_fullscreen() -> bool:
 	var window_mode := DisplayServer.window_get_mode()
-	var kiosk := window_mode == DisplayServer.WINDOW_MODE_FULLSCREEN or window_mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
-	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if kiosk else Input.MOUSE_MODE_VISIBLE
+	return window_mode == DisplayServer.WINDOW_MODE_FULLSCREEN or window_mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
 
 
 ## Headless/desktop capture: NOVA_PREVIEW=simple|complete|both and optional NOVA_PREVIEW_DIR.

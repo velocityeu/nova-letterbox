@@ -649,7 +649,7 @@ Letterbox version line, then exit:
 
 Keys, with the window focused:
   1 Simple  ·  2 Complete  ·  Tab toggle
-  Esc or Q quit
+  Esc or Q quit  ·  F11 fullscreen
 The project uses the GL Compatibility renderer.
 
 Pi HDMI 1920×480, blanking, and labwc/wayfire:

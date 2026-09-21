@@ -401,6 +401,7 @@ keys_out="$(HOME="$keys_home" bash -c '
 ')"
 [[ "$keys_out" == *"1 Simple"* && "$keys_out" == *"2 Complete"* && "$keys_out" == *"Tab toggle"* ]] || fail "done view keys"
 [[ "$keys_out" == *"Esc or Q quit"* ]] || fail "done quit key"
+[[ "$keys_out" == *"F11 fullscreen"* ]] || fail "done fullscreen key"
 rm -rf "$keys_home"
 
 echo "OK"
