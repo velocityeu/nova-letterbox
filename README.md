@@ -2,7 +2,7 @@
 
 Display-only telemetry shell for a Raspberry Pi 5 driving a Waveshare 8.8" IPS side monitor over HDMI. The panel's native timing is portrait **480×1920**. This project runs landscape **1920×480**, fullscreen on the Pi.
 
-The UI is a Godot 4 scene shell. Numbers are stubs in `scripts/demo_telemetry.gd` — there is no live network, sensor, or VPN client yet. The clock in Complete view reads the system time.
+The UI is a Godot 4 scene shell. Gauges, the sparkline, and the status ribbon read the Linux host through the `Telemetry` autoload (`scripts/telemetry.gd`). The clock in Complete view reads the system time.
 
 Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
@@ -10,7 +10,7 @@ Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
 | View | When | What you see |
 | --- | --- | --- |
-| **Simple** | Default | Three copper dials — Download Mbps, Upload Mbps, Ping ms — plus a bottom status line: Wi-Fi Connected and Ethernet Link. |
+| **Simple** | Default | Three copper dials — Download Mbps, Upload Mbps, Ping ms — plus a bottom status line for Wi-Fi and Ethernet. |
 | **Complete** | Alternate | The same three dials, with a throughput sparkline, Pi → Router → Internet path, CPU and RAM rings, a top bar (clock, NOVA, public and local IP, VPN badge), and a status ribbon (Wi-Fi, Ethernet, Pi temperature, disk). |
 
 With the window focused:
@@ -76,6 +76,41 @@ Copy `build/linux-arm64/nova-letterbox.arm64` to the Pi, `chmod +x`, and run it 
 
 No credentials, API tokens, or device secrets belong in this project.
 
+Optional packages, used when present and skipped when they are not:
+
+```bash
+sudo apt install iputils-ping iw ethtool network-manager
+```
+
+The shell still runs on a headless dev machine with no Wi-Fi card. That card then reads as not connected.
+
+## Live telemetry
+
+`Telemetry` samples the host on a 1 second tick. Costlier probes are slower. Nothing here is a scripted animation: a missing sensor stays at an explicit offline or N/A state.
+
+| Field | How it is read | If it cannot be read |
+| --- | --- | --- |
+| Download / Upload Mbps | Byte counters in `/proc/net/dev` on the default-route interface (`/proc/net/route`), turned into Mbps from the delta | `0` until the second sample, then real idle traffic |
+| Ping ms | `ping -c 1 -W 1` to the default gateway, then to `1.1.1.1`. If ICMP fails, a TCP connect to `1.1.1.1:443` | Last good RTT stays on the dial. `0` until the first success |
+| Throughput sparkline | Rolling ~24 samples of **download** Mbps. The Y axis grows with the peak | Empty until two samples exist |
+| Local IP | Godot `IP.get_local_interfaces()` on that same interface | `—` |
+| Public IP | HTTPS `https://1.1.1.1/cdn-cgi/trace` (4s timeout), then `https://api.ipify.org`. Cached 5 minutes; retry 1 minute after a miss | `—`, or the last address that succeeded |
+| VPN | Interface up (`IFF_UP`) whose name starts with `tun`, `tap`, `wg`, `tailscale`, `zt`, `nordlynx`, `proton`, `mullvad`, `warp`, or similar | Badge **OFF** |
+| Wi-Fi | `iw dev <iface> link`, then `iwgetid`, then `nmcli` without a rescan. dBm also comes from `/proc/net/wireless` | **Not connected** / **N/A**. No card is the same state |
+| Ethernet | Carrier and speed from `/sys/class/net/<iface>`. `ethtool` only if sysfs has no positive speed | **N/A** if there is no physical NIC. **LINK: up** when the carrier is up but the speed is unknown — the UI does not invent 1 Gbps |
+| CPU / RAM | `/proc/stat` deltas and `/proc/meminfo` (`MemAvailable`) | Rings stay empty until a real ratio exists |
+| Disk | `df -P /` capacity of the root filesystem | **N/A** |
+| Pi temp | `/sys/class/thermal/thermal_zone0/temp` in milli-°C, and only when the device-tree model contains "Raspberry Pi" | **N/A** on desktops and VMs |
+| Clock | System clock | — |
+
+Dial faces keep the mock scale (175 Mbps / 175 ms on Simple, 100 on Complete) until a live sample exceeds it, then the scale steps up so the needle is not stuck at the end. Parser fixtures live in `tests/test_linux_metrics.gd`:
+
+```bash
+godot --headless --path . -s res://tests/test_linux_metrics.gd
+```
+
+On a Linux machine with a default route, `res://tests/probe_live.tscn` prints one live snapshot after a few seconds. It expects ping and a public-address lookup to succeed. Idle throughput can sit near zero; that is real, not a placeholder.
+
 ## Layout
 
 ```
@@ -86,7 +121,8 @@ docs/pi-kiosk.md           copy, chmod, HDMI, blanking, fullscreen
 scenes/main.tscn           boots Simple; switches views
 scenes/simple_view.tscn    default letterbox
 scenes/complete_view.tscn  alternate letterbox
-scripts/demo_telemetry.gd  stub numbers
+scripts/telemetry.gd       autoload: live Linux sampler
+scripts/linux_metrics.gd   /proc and command parsers
 scripts/nova_palette.gd    charcoal / copper / amber / steel constants
 scripts/nova_theme.gd      fonts and style boxes
 themes/nova_theme.tres     project Theme (IBM Plex Sans)

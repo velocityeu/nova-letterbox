@@ -4,6 +4,7 @@ extends Control
 ## Simple letterbox. Laid out in a 1920×480 design space and scaled to fit
 ## so Download, Upload, and Ping stay on screen together.
 
+const Metrics = preload("res://scripts/linux_metrics.gd")
 const DESIGN := Vector2(1920, 480)
 
 @onready var _download: DialGauge = $Download
@@ -15,8 +16,19 @@ func _ready() -> void:
 	_style()
 	if not resized.is_connected(_layout):
 		resized.connect(_layout)
-	_apply_demo()
+	if Engine.is_editor_hint():
+		call_deferred("_layout")
+		return
+	Telemetry.updated.connect(_apply)
+	_apply()
 	call_deferred("_layout")
+
+
+func _exit_tree() -> void:
+	if Engine.is_editor_hint():
+		return
+	if Telemetry.updated.is_connected(_apply):
+		Telemetry.updated.disconnect(_apply)
 
 
 func _style() -> void:
@@ -39,11 +51,40 @@ func _style() -> void:
 	($EthIcon as GlyphIcon).glyph_color = NovaPalette.COPPER_SOFT
 
 
-func _apply_demo() -> void:
-	var data := DemoTelemetry.simple()
-	_download.value = float(data.download_mbps)
-	_upload.value = float(data.upload_mbps)
-	_ping.value = float(data.ping_ms)
+func _apply() -> void:
+	var data: Dictionary = Telemetry.snapshot()
+	_raise_dial(_download, float(data.get("download_mbps", 0.0)))
+	_raise_dial(_upload, float(data.get("upload_mbps", 0.0)))
+	var ping := float(data.get("ping_ms", -1.0))
+	_raise_dial(_ping, 0.0 if ping < 0.0 else ping)
+	var wifi: Label = $WifiLabel
+	var eth: Label = $EthLabel
+	wifi.text = "Wi-Fi Connected" if bool(data.get("wifi_connected", false)) else "Wi-Fi not connected"
+	eth.text = _ethernet_status(data)
+	_layout()
+
+
+func _ethernet_status(data: Dictionary) -> String:
+	if not bool(data.get("eth_present", false)):
+		return "Ethernet N/A"
+	if not bool(data.get("eth_up", false)):
+		return "Ethernet down"
+	var link := str(data.get("eth_link", ""))
+	if link.begins_with("LINK: ") and link != "LINK: up" and link != "LINK: down":
+		return "Ethernet " + link.trim_prefix("LINK: ")
+	if bool(data.get("eth_up", false)):
+		return "Ethernet Link"
+	return "Ethernet N/A"
+
+
+func _raise_dial(dial: DialGauge, value: float) -> void:
+	if value > dial.max_value:
+		var scale: Dictionary = Metrics.gauge_scale(value, dial.max_value) as Dictionary
+		dial.max_value = float(scale.max)
+		dial.major_step = float(scale.major)
+		dial.minor_step = float(scale.minor)
+		dial.label_step = float(scale.label)
+	dial.value = value
 
 
 func _layout() -> void:
