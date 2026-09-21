@@ -2,7 +2,7 @@
 
 Run the ARM64 release binary on 64-bit Raspberry Pi OS with a desktop session (labwc or wayfire). Do not install the Godot editor on the Pi for day-to-day use. The binary embeds the PCK. No credentials, API tokens, or device secrets belong in this project.
 
-The window is **1920×480**, fullscreen, GL Compatibility. With the window focused: `1` Simple, `2` Complete, `Tab` toggles. The cursor hides while fullscreen. Missing Wi-Fi or the Pi temperature sensor stays at an explicit offline or N/A state; the shell still starts.
+The window is **1920×480**, fullscreen, GL Compatibility. With the window focused: `1` Simple, `2` Complete, `Tab` toggles, `Esc` or `Q` quits. The cursor hides while fullscreen. Missing Wi-Fi or the Pi temperature sensor stays at an explicit offline or N/A state; the shell still starts.
 
 ## Install on the Pi
 
@@ -14,6 +14,8 @@ gh api repos/velocityeu/nova-letterbox/contents/install.sh \
 ```
 
 That writes the binary to `~/.local/share/nova-letterbox/nova-letterbox` and a symlink at `~/.local/bin/nova-letterbox`. A `v*` release is the default download. Until one exists, the script uses the `continuous` prerelease built from `main` and says so.
+
+On a terminal the installer is a text wizard. It can install missing telemetry packages (`iputils-ping`, `iw`, `wireless-tools`, `ethtool`, and optionally `network-manager`) after you confirm, and it asks before autostart. The Pi default is the labwc line below, written with the full path to `~/.local/bin/nova-letterbox` so the session does not depend on `PATH`. If the session is wayfire, or `~/.config/wayfire.ini` already exists, it updates that file instead. The systemd user unit below is not enabled automatically. `bash install.sh --yes` and a pipe do not install packages, edit `PATH`, or enable autostart unless you also pass `--autostart`.
 
 ```bash
 nova-letterbox --fullscreen
