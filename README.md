@@ -8,48 +8,80 @@ Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
 ## Install
 
-Linux x86_64 and aarch64 (Raspberry Pi 5). The installer downloads a release binary with the PCK embedded. One line, once this repo and its release assets are public:
+Linux only. Three layouts today, one installer: a generic desktop, a Raspberry Pi 5 HDMI kiosk, and Omarchy (Arch + Hyprland). The script reads `uname -m` and downloads `nova-letterbox-linux-x86_64` or `nova-letterbox-linux-arm64`. The PCK is embedded in that binary.
+
+### Private repo
+
+The repository is **private**. Log in with `gh auth login` (an account that can read this repo), then:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
+gh api repos/velocityeu/nova-letterbox/contents/install.sh --jq .content | base64 -d | bash
 ```
 
-The repository is **private** today, so that anonymous curl fails. Authenticate, then fetch the script the same way:
+With a token that can read this repo, in `GH_TOKEN` or `GITHUB_TOKEN`:
 
 ```bash
-gh auth login
-gh api repos/velocityeu/nova-letterbox/contents/install.sh \
-  -H "Accept: application/vnd.github.raw" | bash
-```
-
-Or with a token that can read this repo (`GH_TOKEN` or `GITHUB_TOKEN`):
-
-```bash
-curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+curl -fsSL \
+  -H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}" \
   -H "Accept: application/vnd.github.raw" \
   https://api.github.com/repos/velocityeu/nova-letterbox/contents/install.sh | bash
 ```
 
-Fullscreen from the installer, or after it:
+Anonymous `curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash` works only once the repo is public (the script and the release assets). Until then that URL is not available.
+
+### After install
+
+The command is `~/.local/bin/nova-letterbox`, a symlink to `~/.local/share/nova-letterbox/nova-letterbox`. No sudo. `--system` uses `/usr/local` the same way. A desktop entry and icon land under `~/.local/share`. If `~/.local/bin` is not on `PATH`, the installer prints the `export` line.
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install.sh \
-  -H "Accept: application/vnd.github.raw" | bash -s -- --fullscreen
-
+nova-letterbox
 nova-letterbox --fullscreen
 ```
 
-The binary lands in `~/.local/share/nova-letterbox/nova-letterbox`. `~/.local/bin/nova-letterbox` is a symlink to it (no sudo). A desktop entry and icon are written under `~/.local/share`. `--system` uses `/usr/local` the same way. `NOVA_VERSION=v0.1.0` pins a tag. `NOVA_VERSION=continuous` pins the rolling build from `main`.
-
-`install.sh` asks GitHub for the **latest stable release**. Pushes to `main` publish a prerelease tagged `continuous`; a `v*` tag publishes the stable release the installer prefers. If no stable release exists yet, the script falls back to `continuous` and says so. The one-liner cannot download a binary until that workflow has succeeded on `main` (or a `v*` tag) at least once. Cutting a `v*` tag is what makes "latest" a stable release; it is not required for the continuous fallback.
-
-Without the script:
+With the window focused: `1` Simple, `2` Complete, `Tab` toggles.
 
 ```bash
-gh release download --repo velocityeu/nova-letterbox --pattern 'nova-letterbox-linux-*'
+NOVA_PRINT_VERSION=1 nova-letterbox
 ```
 
-Omarchy (Arch + Hyprland) uses that same binary. The launcher entry is native (Super+Space → NOVA Letterbox). Optional `--autostart` is Hyprland-only: [`docs/omarchy.md`](docs/omarchy.md). Pi HDMI, blanking, and session autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+That prints `NOVA Letterbox continuous` for the rolling build, or `NOVA Letterbox` plus the tag version (`NOVA Letterbox 0.1.0` for `v0.1.0`). The window may flash before it exits.
+
+### Linux PC (x86_64)
+
+The one-liner above. It needs a display. Gauges, the sparkline, and the status ribbon read live host metrics ([Live telemetry](#live-telemetry)).
+
+### Raspberry Pi 5 (aarch64)
+
+The same one-liner. On the Pi it downloads `nova-letterbox-linux-arm64` for the Waveshare 8.8″ HDMI panel. Landscape **1920×480**, blanking off, and labwc, wayfire, or systemd autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+
+`iputils-ping`, `iw`, and `ethtool` improve ping, Wi-Fi, and link-speed readings when they are installed. The shell still runs without them.
+
+### Omarchy Linux
+
+Same binary as the Linux PC and the Pi. `install-omarchy.sh`, or `install.sh --omarchy`, writes the desktop entry (Super+Space → **NOVA Letterbox**). `--autostart` adds Hyprland login start. Notes: [`docs/omarchy.md`](docs/omarchy.md).
+
+```bash
+gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh --jq .content | base64 -d | bash
+```
+
+Hyprland autostart:
+
+```bash
+gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh --jq .content | base64 -d | bash -s -- --autostart
+```
+
+From a checkout: `./install-omarchy.sh` or `bash install.sh --omarchy`. On a machine whose `/etc/os-release` already says Omarchy, plain `install.sh` writes the same desktop entry.
+
+### Releases
+
+The installer prefers the latest **stable** `v*` release. If none exists, it falls back to the **`continuous`** prerelease from `main` and says so. A push to `main` updates `continuous`. A `v*` tag is the stable release. The download needs that workflow to have succeeded at least once.
+
+Pin a release by exporting `NOVA_VERSION` in the shell that runs the script, then use the same one-liner:
+
+```bash
+export NOVA_VERSION=v0.1.0      # stable tag (0.1.0 is accepted; a leading v is added)
+export NOVA_VERSION=continuous  # rolling build from main
+```
 
 ## Views
 
@@ -115,7 +147,7 @@ The Pi preset embeds the PCK and includes **ETC2/ASTC** (GLES on the Pi) with **
 
 ## Raspberry Pi 5 kiosk
 
-Install with the one-liner above. The command is the symlink `~/.local/bin/nova-letterbox`. Full steps — landscape **1920×480** (panel native **480×1920**), blanking off, and labwc/wayfire autostart — are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
+Install from the section above (`nova-letterbox-linux-arm64`). HDMI landscape **1920×480** (panel native **480×1920**), blanking off, and labwc, wayfire, or systemd autostart are in [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
 
 ```bash
 nova-letterbox --fullscreen
@@ -123,13 +155,7 @@ nova-letterbox --fullscreen
 
 No credentials, API tokens, or device secrets belong in this project.
 
-Optional packages, used when present and skipped when they are not:
-
-```bash
-sudo apt install iputils-ping iw ethtool network-manager
-```
-
-The shell still runs on a headless dev machine with no Wi-Fi card. That card then reads as not connected.
+The shell still runs on a headless dev machine with no Wi-Fi card. That card then reads as not connected. `network-manager` (`nmcli`) is an optional Wi-Fi fallback, used when it is present and skipped when it is not.
 
 ## Live telemetry
 
