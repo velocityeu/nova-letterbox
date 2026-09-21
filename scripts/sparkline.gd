@@ -28,19 +28,23 @@ var _title_font: Font
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	resized.connect(queue_redraw)
+	if not resized.is_connected(queue_redraw):
+		resized.connect(queue_redraw)
 
 
 func _draw() -> void:
 	if _font == null:
 		_font = NovaTheme.tracked(NovaTheme.REGULAR, 0)
 		_title_font = NovaTheme.tracked(NovaTheme.MEDIUM, 1)
+	if size.y < 16.0 or size.x < 16.0:
+		return
 
-	NovaTheme.draw_centered(self, _title_font, title, Vector2(size.x * 0.5, 11), 12, NovaPalette.COPPER_SOFT)
+	var title_px := int(clampf(size.y * 0.11, 10, 14))
+	NovaTheme.draw_centered(self, _title_font, title, Vector2(size.x * 0.5, title_px * 0.7), title_px, NovaPalette.COPPER_SOFT)
 
-	var plot := Rect2(Vector2(36, 24), Vector2(maxf(8.0, size.x - 48), maxf(8.0, size.y - 46)))
-	var grid_steps: Array[float] = [0.25, 0.5, 0.75, 1.0]
-	for t in grid_steps:
+	var plot := Rect2(Vector2(36, title_px + 6), Vector2(maxf(8.0, size.x - 48), maxf(8.0, size.y - title_px - 28)))
+	for step in [0.25, 0.5, 0.75, 1.0]:
+		var t := float(step)
 		var y := plot.position.y + plot.size.y * (1.0 - t)
 		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), NovaPalette.GRID, 1.0, true)
 		var label := str(int(round(y_max * t)))
@@ -65,15 +69,14 @@ func _draw() -> void:
 		var fill := points.duplicate()
 		fill.append(Vector2(plot.end.x, plot.end.y))
 		fill.append(Vector2(plot.position.x, plot.end.y))
-		draw_colored_polygon(fill, Color(NovaPalette.TRACE.r, NovaPalette.TRACE.g, NovaPalette.TRACE.b, 0.14))
-		draw_polyline(points, NovaPalette.TRACE, 1.8, true)
+		draw_colored_polygon(fill, Color(NovaPalette.TRACE.r, NovaPalette.TRACE.g, NovaPalette.TRACE.b, 0.16))
+		draw_polyline(points, NovaPalette.TRACE, 1.7, true)
 
 	if not x_labels.is_empty():
-		var baseline := size.y - 6
+		var baseline := size.y - 4
 		var count := x_labels.size()
 		for i in count:
 			var x := plot.position.x if count == 1 else lerpf(plot.position.x, plot.end.x, float(i) / float(count - 1))
 			var label_size := _font.get_string_size(x_labels[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
-			var origin := x - label_size.x * 0.5
-			origin = clampf(origin, 0.0, maxf(0.0, size.x - label_size.x))
+			var origin := clampf(x - label_size.x * 0.5, 0.0, maxf(0.0, size.x - label_size.x))
 			draw_string(_font, Vector2(origin, baseline), x_labels[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, NovaPalette.STEEL_DIM)

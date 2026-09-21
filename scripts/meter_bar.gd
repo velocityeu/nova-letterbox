@@ -11,12 +11,14 @@ extends Control
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
-	resized.connect(queue_redraw)
-	custom_minimum_size.y = maxf(custom_minimum_size.y, 8)
+	if not resized.is_connected(queue_redraw):
+		resized.connect(queue_redraw)
 
 
 func _draw() -> void:
-	var radius := int(size.y)
+	if size.x < 2.0 or size.y < 2.0:
+		return
+	var radius := int(round(size.y * 0.5))
 	var track := StyleBoxFlat.new()
 	track.bg_color = NovaPalette.TRACK
 	track.set_corner_radius_all(radius)
