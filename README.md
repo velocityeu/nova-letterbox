@@ -29,9 +29,15 @@ curl -fsSL \
 
 Anonymous `curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash` works only once the repo is public (the script and the release assets). Until then that URL is not available.
 
+### Text wizard or one-liner
+
+In a terminal, `bash install.sh` (and `./install-omarchy.sh`) runs a plain-text wizard. It names the architecture and distro, offers to install missing packages, downloads the binary, offers to put the command directory on `PATH`, and asks whether to enable autostart. Prompts are `[y/N]` (the welcome continue prompt is `[Y/n]`). The wizard does not need `dialog` or `whiptail`.
+
+`bash install.sh --yes`, `NOVA_NONINTERACTIVE=1`, or a pipe (the one-liner above) skips every prompt. That path does not install packages, does not edit shell startup files, and does not enable autostart unless you also pass `--autostart`.
+
 ### After install
 
-The command is `~/.local/bin/nova-letterbox`, a symlink to `~/.local/share/nova-letterbox/nova-letterbox`. No sudo. `--system` uses `/usr/local` the same way. A desktop entry and icon land under `~/.local/share`. If `~/.local/bin` is not on `PATH`, the installer prints the `export` line.
+The command is `~/.local/bin/nova-letterbox`, a symlink to `~/.local/share/nova-letterbox/nova-letterbox`. No sudo unless you accept a package install, or `--system` cannot write `/usr/local`. A desktop entry and icon land under `~/.local/share`. If `~/.local/bin` is not on `PATH`, the wizard can append an `export` to `~/.bashrc`, `~/.zshrc`, or `~/.profile` after you confirm. The one-liner only prints the `export` line.
 
 ```bash
 nova-letterbox
@@ -54,11 +60,13 @@ The one-liner above. It needs a display. Gauges, the sparkline, and the status r
 
 The same one-liner. On the Pi it downloads `nova-letterbox-linux-arm64` for the Waveshare 8.8″ HDMI panel. Landscape **1920×480**, blanking off, and labwc, wayfire, or systemd autostart: [`docs/pi-kiosk.md`](docs/pi-kiosk.md).
 
+In a terminal the wizard asks before enabling autostart. On Pi OS the default is labwc (`~/.config/labwc/autostart`). A wayfire session, or an existing `~/.config/wayfire.ini`, updates that file instead. The systemd user unit is not enabled for you. `--yes` and a pipe leave autostart off unless you pass `--autostart`.
+
 `iputils-ping`, `iw`, and `ethtool` improve ping, Wi-Fi, and link-speed readings when they are installed. The shell still runs without them.
 
 ### Omarchy Linux
 
-Same binary as the Linux PC and the Pi. `install-omarchy.sh`, or `install.sh --omarchy`, writes the desktop entry (Super+Space → **NOVA Letterbox**). `--autostart` adds Hyprland login start. Notes: [`docs/omarchy.md`](docs/omarchy.md).
+Same binary as the Linux PC and the Pi. `install-omarchy.sh`, or `install.sh --omarchy`, writes the desktop entry (Super+Space → **NOVA Letterbox**). In a terminal the wizard asks before Hyprland autostart. `--autostart` adds it without asking. `--yes` and a pipe do not. Notes: [`docs/omarchy.md`](docs/omarchy.md).
 
 ```bash
 gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh --jq .content | base64 -d | bash
@@ -189,7 +197,7 @@ On a Linux machine with a default route, `res://tests/probe_live.tscn` prints on
 ```
 project.godot              1920×480 window, GL Compatibility, main scene
 export_presets.cfg         Linux Desktop (x86_64) and Linux Pi ARM64
-install.sh                 one-line install from a GitHub Release
+install.sh                 text wizard, or a one-line install with --yes
 install-omarchy.sh         same install, Omarchy desktop entry forced
 scripts/export-linux.sh    headless release export when godot is on PATH
 scripts/ci-install-godot.sh  Godot 4.3.stable editor and export templates

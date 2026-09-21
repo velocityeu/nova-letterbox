@@ -3,6 +3,10 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
 #
+# A terminal (stdin is a TTY) runs a short text wizard: dependencies, PATH,
+# and an autostart question. A pipe, --yes, or NOVA_NONINTERACTIVE=1 skips
+# every prompt and does not enable autostart unless --autostart is set.
+#
 # This repository is private. Anonymous curl of this script and of Release
 # assets fails until the repo is public. Export GH_TOKEN (or GITHUB_TOKEN),
 # or log in with `gh auth login`, before running. See the README.
@@ -11,6 +15,7 @@
 #   NOVA_VERSION=continuous rolling prerelease built from main
 #   NOVA_FROM_SOURCE=1      export with a local Godot 4.3.stable instead
 #   NOVA_REPO=owner/name    override the GitHub repo
+#   NOVA_NONINTERACTIVE=1   same as --yes
 set -euo pipefail
 
 REPO="${NOVA_REPO:-velocityeu/nova-letterbox}"
@@ -22,6 +27,10 @@ SYSTEM=0
 FULLSCREEN=0
 OMARCHY=0
 AUTOSTART=0
+YES=0
+DISTRO=""
+AUTOSTART_KIND=""
+PATH_RC=""
 
 # Global so the EXIT trap can still see it after main returns. A local
 # disappears first, and set -u then aborts a successful install.
@@ -51,24 +60,29 @@ die() {
 
 usage() {
 	cat <<EOF
-Usage: install.sh [--fullscreen] [--system] [--prefix DIR] [--omarchy] [--autostart]
+Usage: install.sh [--fullscreen] [--system] [--prefix DIR] [--omarchy] [--autostart] [--yes]
 
 Install the matching Linux release binary from the latest GitHub Release.
 The binary is ~/.local/share/nova-letterbox/nova-letterbox.
 ~/.local/bin/nova-letterbox is a symlink to it. No sudo unless --system
-cannot write /usr/local.
+cannot write /usr/local, or you agree to install missing packages.
+
+In a terminal this is a text wizard (dependencies, PATH, autostart).
+--yes, NOVA_NONINTERACTIVE=1, or a pipe skips the wizard.
 
   --fullscreen   launch fullscreen when install finishes
   --system       use /usr/local/share and /usr/local/bin (sudo only if needed)
   --prefix DIR   use DIR/share and DIR/bin
   --omarchy      write the Omarchy desktop entry (also implied by /etc/os-release)
-  --autostart    Hyprland login autostart and a 1920x480 fullscreen window rule
+  --autostart    enable login autostart without asking
+  --yes          non-interactive: no prompts, no package installs, no PATH edit
   -h, --help     show this help
 
 Environment:
   GH_TOKEN or GITHUB_TOKEN   required for this private repo if \`gh\` is not logged in
   NOVA_VERSION               tag to download (v0.1.0, 0.1.0, or continuous)
   NOVA_FROM_SOURCE=1         build with Godot 4.3.stable instead of downloading
+  NOVA_NONINTERACTIVE=1      same as --yes
 EOF
 }
 
@@ -78,6 +92,7 @@ parse_args() {
 	FULLSCREEN=0
 	OMARCHY=0
 	AUTOSTART=0
+	YES=0
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			--fullscreen) FULLSCREEN=1 ;;
@@ -93,6 +108,7 @@ parse_args() {
 				;;
 			--omarchy) OMARCHY=1 ;;
 			--autostart) AUTOSTART=1 ;;
+			--yes) YES=1 ;;
 			-h|--help) usage; exit 0 ;;
 			*) die "unknown argument: $1 (try --help)" ;;
 		esac
@@ -658,21 +674,734 @@ EOF
 			echo "  export PATH=\"$(dirname "$bin"):\$PATH\""
 			;;
 	esac
+	if [[ -n "${PATH_RC:-}" ]]; then
+		echo
+		echo "PATH line written to ${PATH_RC}. Open a new terminal so the shell reads it."
+	fi
+	case "${AUTOSTART_KIND:-}" in
+		labwc)
+			echo "Autostart appends to ~/.config/labwc/autostart."
+			echo "wayfire.ini and the systemd user unit: https://github.com/${REPO}/blob/main/docs/pi-kiosk.md"
+			;;
+		wayfire)
+			echo "Autostart updates ~/.config/wayfire.ini."
+			echo "labwc and the systemd user unit: https://github.com/${REPO}/blob/main/docs/pi-kiosk.md"
+			;;
+		xdg)
+			echo "Autostart: ~/.config/autostart/nova-letterbox.desktop"
+			;;
+	esac
+}
+
+# stdin_is_tty is 1 or 0 so tests do not depend on the runner's terminal.
+# 0 means: do not prompt (pipe, --yes, or NOVA_NONINTERACTIVE=1).
+should_prompt() {
+	local stdin_is_tty="${1:-0}"
+	if [[ "${NOVA_NONINTERACTIVE:-}" == "1" ]]; then
+		return 1
+	fi
+	if [[ "${YES:-0}" == "1" ]]; then
+		return 1
+	fi
+	[[ "$stdin_is_tty" == "1" ]]
+}
+
+interactive_mode() {
+	local tty=0
+	if [[ -t 0 ]]; then
+		tty=1
+	fi
+	should_prompt "$tty"
+}
+
+ui_heading() {
+	if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+		printf '\033[1m%s\033[0m\n' "$*"
+	else
+		printf '%s\n' "$*"
+	fi
+}
+
+ui_step() {
+	echo
+	ui_heading "[$1/6] $2"
+}
+
+# Read one answer from the terminal. /dev/tty is preferred so a pipe is not
+# consumed. If this process has no controlling terminal, stdin is used;
+# interactive_mode already required stdin to be a TTY.
+read_reply() {
+	local prompt="$1"
+	local reply=""
+	# -r /dev/tty can be true when open still fails (no controlling terminal).
+	if ( : </dev/tty ) 2>/dev/null && read -r -p "$prompt" reply </dev/tty; then
+		printf '%s' "$reply"
+		return 0
+	fi
+	if [[ -t 0 ]] && read -r -p "$prompt" reply; then
+		printf '%s' "$reply"
+		return 0
+	fi
+	return 1
+}
+
+# Default is yes. Used for the welcome continue prompt.
+ask_default_yes() {
+	local prompt="$1"
+	local reply=""
+	if ! interactive_mode; then
+		return 0
+	fi
+	if ! reply="$(read_reply "${prompt} [Y/n] ")"; then
+		printf '\n'
+		return 0
+	fi
+	case "${reply,,}" in
+		n|no) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+# Default is no. Used before sudo, PATH edits, and autostart.
+ask_yn() {
+	local prompt="$1"
+	local reply=""
+	if ! interactive_mode; then
+		return 1
+	fi
+	if ! reply="$(read_reply "${prompt} [y/N] ")"; then
+		printf '\n'
+		return 1
+	fi
+	case "${reply,,}" in
+		y|yes) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+read_model() {
+	local f
+	for f in /proc/device-tree/model /sys/firmware/devicetree/base/model; do
+		if [[ -r "$f" ]]; then
+			tr -d '\0' <"$f" || true
+			return 0
+		fi
+	done
+	printf ''
+}
+
+os_release_field() {
+	local file="$1"
+	local key="$2"
+	local line=""
+	[[ -f "$file" ]] || return 0
+	line="$(grep -E "^${key}=" "$file" | head -n 1 || true)"
+	line="${line#*=}"
+	line="${line#\"}"
+	line="${line%\"}"
+	printf '%s' "$line"
+}
+
+# Prints omarchy, pi, debian, arch, or linux.
+# Pass an os-release path. Omit the model path to read this machine.
+# Pass an empty model path to ignore the live device tree (tests).
+detect_distro() {
+	local os_file="$1"
+	local model_file="${2-__live__}"
+	local model="" id="" id_like="" pretty="" name="" blob=""
+	if [[ "$model_file" == "__live__" ]]; then
+		model="$(read_model)"
+		if [[ -f /etc/rpi-issue ]]; then
+			model="${model} Raspberry"
+		fi
+	elif [[ -n "$model_file" && -f "$model_file" ]]; then
+		model="$(tr -d '\0' <"$model_file")"
+	fi
+	if [[ -f "$os_file" ]] && os_release_is_omarchy "$os_file"; then
+		printf 'omarchy'
+		return 0
+	fi
+	id="$(os_release_field "$os_file" ID)"
+	id_like="$(os_release_field "$os_file" ID_LIKE)"
+	pretty="$(os_release_field "$os_file" PRETTY_NAME)"
+	name="$(os_release_field "$os_file" NAME)"
+	blob="${id} ${id_like} ${pretty} ${name} ${model}"
+	if [[ "$id" == "raspbian" || "$id" == "raspios" ]] || printf '%s' "$blob" | grep -qi 'raspberry'; then
+		printf 'pi'
+		return 0
+	fi
+	case "$id" in
+		ubuntu|debian|linuxmint|pop) printf 'debian'; return 0 ;;
+		arch|endeavouros|manjaro) printf 'arch'; return 0 ;;
+	esac
+	if [[ "$id_like" == *debian* || "$id_like" == *ubuntu* ]]; then
+		printf 'debian'
+		return 0
+	fi
+	if [[ "$id_like" == *arch* ]]; then
+		printf 'arch'
+		return 0
+	fi
+	printf 'linux'
+}
+
+distro_label() {
+	case "$1" in
+		omarchy) printf 'Omarchy' ;;
+		pi) printf 'Raspberry Pi OS' ;;
+		debian) printf 'Debian/Ubuntu' ;;
+		arch) printf 'Arch Linux' ;;
+		*) printf 'Linux' ;;
+	esac
+}
+
+package_manager_for_distro() {
+	case "$1" in
+		omarchy|arch) printf 'pacman' ;;
+		pi|debian) printf 'apt' ;;
+		*)
+			if command -v pacman >/dev/null 2>&1; then
+				printf 'pacman'
+			elif command -v apt-get >/dev/null 2>&1; then
+				printf 'apt'
+			else
+				printf 'none'
+			fi
+			;;
+	esac
+}
+
+package_manager_label() {
+	case "$1" in
+		apt) printf 'apt' ;;
+		pacman) printf 'pacman' ;;
+		*) printf 'no package manager' ;;
+	esac
+}
+
+# command|apt package|pacman package|level
+# Names are the real distro packages. ping is iputils (the -W flag the
+# shell uses). Arch calls the wireless tools package wireless_tools;
+# Debian calls it wireless-tools. nmcli is optional.
+dep_table() {
+	cat <<'EOF'
+python3|python3|python|required
+curl|curl|curl|required
+ping|iputils-ping|iputils|recommended
+iw|iw|iw|recommended
+iwgetid|wireless-tools|wireless_tools|recommended
+ethtool|ethtool|ethtool|recommended
+nmcli|network-manager|networkmanager|optional
+EOF
+}
+
+package_for() {
+	local cmd="$1"
+	local pm="$2"
+	local c a p lvl
+	while IFS='|' read -r c a p lvl; do
+		[[ "$c" == "$cmd" ]] || continue
+		if [[ "$pm" == "pacman" ]]; then
+			printf '%s' "$p"
+		else
+			printf '%s' "$a"
+		fi
+		return 0
+	done < <(dep_table)
+	return 1
+}
+
+# present is a newline-separated list of commands that already exist.
+# gh_ok=1 skips curl (gh can download the release).
+collect_packages() {
+	local pm="$1"
+	local level="$2"
+	local present="$3"
+	local gh_ok="${4:-0}"
+	local c a p lvl
+	while IFS='|' read -r c a p lvl; do
+		[[ "$lvl" == "$level" ]] || continue
+		if [[ "$c" == "curl" && "$gh_ok" == "1" ]]; then
+			continue
+		fi
+		if printf '%s\n' "$present" | grep -F -qx "$c"; then
+			continue
+		fi
+		if [[ "$pm" == "pacman" ]]; then
+			printf '%s\n' "$p"
+		elif [[ "$pm" == "none" ]]; then
+			printf '%s\n' "$c"
+		else
+			printf '%s\n' "$a"
+		fi
+	done < <(dep_table)
+}
+
+present_commands() {
+	local c rest
+	while IFS='|' read -r c rest; do
+		if command -v "$c" >/dev/null 2>&1; then
+			printf '%s\n' "$c"
+		fi
+	done < <(dep_table)
+}
+
+print_dep_report() {
+	local pm="$1"
+	local present="$2"
+	local gh_ok="$3"
+	local c a p lvl pkg state
+	printf '  %-12s %-12s %s\n' "Command" "Status" "Package"
+	while IFS='|' read -r c a p lvl; do
+		if [[ "$pm" == "pacman" ]]; then
+			pkg="$p"
+		elif [[ "$pm" == "none" ]]; then
+			pkg="n/a"
+		else
+			pkg="$a"
+		fi
+		state="missing"
+		if printf '%s\n' "$present" | grep -F -qx "$c"; then
+			state="ok"
+		elif [[ "$c" == "curl" && "$gh_ok" == "1" ]]; then
+			state="ok (gh)"
+		fi
+		printf '  %-12s %-12s %s (%s)\n' "$c" "$state" "$pkg" "$lvl"
+	done < <(dep_table)
+}
+
+install_with_package_manager() {
+	local pm="$1"
+	local status=0
+	shift
+	if [[ "$#" -eq 0 ]]; then
+		return 0
+	fi
+	if [[ "$pm" == "apt" ]]; then
+		if [[ "$(id -u)" -eq 0 ]]; then
+			DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y "$@" || status=$?
+		else
+			sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$@" || status=$?
+		fi
+	elif [[ "$pm" == "pacman" ]]; then
+		if [[ "$(id -u)" -eq 0 ]]; then
+			pacman -S --needed --noconfirm "$@" || status=$?
+		else
+			sudo pacman -S --needed --noconfirm "$@" || status=$?
+		fi
+	else
+		echo "No apt or pacman. Install by hand: $*" >&2
+		return 1
+	fi
+	return "$status"
+}
+
+offer_package_level() {
+	local pm="$1"
+	local level="$2"
+	local present gh_ok pkgs joined how
+	local -a arr=()
+	present="$(present_commands)"
+	gh_ok=0
+	if gh_logged_in; then
+		gh_ok=1
+	fi
+	pkgs="$(collect_packages "$pm" "$level" "$present" "$gh_ok")"
+	if [[ -z "$pkgs" ]]; then
+		return 0
+	fi
+	joined="${pkgs//$'\n'/ }"
+	echo "Missing ${level}: ${joined}"
+	if [[ "$pm" == "none" ]]; then
+		echo "No apt or pacman here. Install these commands yourself if you want them."
+		return 0
+	fi
+	if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+		echo "sudo is not available. Install them yourself and re-run if a later step needs them."
+		return 0
+	fi
+	if [[ "$(id -u)" -eq 0 ]]; then
+		how="Install"
+	else
+		how="Install with sudo"
+	fi
+	if ! ask_yn "${how} missing ${level} packages (${joined})?"; then
+		echo "Skipped ${level} packages."
+		return 0
+	fi
+	mapfile -t arr <<< "$pkgs"
+	if ! install_with_package_manager "$pm" "${arr[@]}"; then
+		echo "warning: ${level} package install did not succeed. Continuing." >&2
+		return 0
+	fi
+	hash -r || true
+}
+
+wizard_welcome() {
+	local arch="$1"
+	local distro="$2"
+	local pm="$3"
+	echo
+	ui_heading "NOVA Letterbox"
+	echo "  Architecture: ${arch}"
+	echo "  System: $(distro_label "$distro") ($(package_manager_label "$pm"))"
+	echo "  Binary: $(app_binary)"
+	echo "  Command: $(cli_link)"
+	if [[ "$OMARCHY" == 1 ]]; then
+		echo "  Desktop entry: Omarchy (Hyprland)"
+	fi
+	echo
+	echo "This downloads the GitHub Release for this machine and installs it for the current user."
+	if ! ask_default_yes "Continue?"; then
+		echo "Install cancelled."
+		exit 0
+	fi
+}
+
+wizard_dependencies() {
+	local pm="$1"
+	local present gh_ok
+	present="$(present_commands)"
+	gh_ok=0
+	if gh_logged_in; then
+		gh_ok=1
+	fi
+	echo "A desktop session is assumed. OpenGL libraries stay with that image."
+	echo "Recommended commands improve ping, Wi-Fi, and link speed. nmcli is optional."
+	print_dep_report "$pm" "$present" "$gh_ok"
+	echo
+	offer_package_level "$pm" required
+	offer_package_level "$pm" recommended
+	offer_package_level "$pm" optional
+}
+
+path_has_dir() {
+	local dir="$1"
+	local path="$2"
+	dir="${dir%/}"
+	case ":${path}:" in
+		*":${dir}:"*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+shell_rc_file() {
+	local home="$1"
+	local shell_path="$2"
+	local base
+	base="$(basename -- "$shell_path")"
+	case "$base" in
+		zsh) printf '%s/.zshrc' "$home" ;;
+		bash) printf '%s/.bashrc' "$home" ;;
+		*) printf '%s/.profile' "$home" ;;
+	esac
+}
+
+path_export_line() {
+	local dir="$1"
+	printf 'export PATH="%s:$PATH"' "$dir"
+}
+
+ensure_path_line() {
+	local rc="$1"
+	local dir="$2"
+	local line
+	line="$(path_export_line "$dir")"
+	if [[ -d "$rc" ]]; then
+		echo "warning: ${rc} is a directory. Not writing PATH." >&2
+		return 1
+	fi
+	if [[ -f "$rc" ]] && grep -qF "$line" "$rc"; then
+		echo "PATH already set in ${rc}"
+		return 0
+	fi
+	if [[ -f "$rc" ]] && grep -qF 'nova-letterbox-path-begin' "$rc"; then
+		echo "PATH block already in ${rc}"
+		return 0
+	fi
+	mkdir -p "$(dirname "$rc")"
+	touch "$rc"
+	cat >>"$rc" <<EOF
+
+# nova-letterbox-path-begin
+${line}
+# nova-letterbox-path-end
+EOF
+	echo "Updated ${rc}"
+}
+
+wizard_path() {
+	local dir rc line
+	dir="$(bin_dir)"
+	if path_has_dir "$dir" "${PATH}"; then
+		echo "${dir} is already on PATH."
+		return 0
+	fi
+	rc="$(shell_rc_file "$HOME" "${SHELL:-}")"
+	line="$(path_export_line "$dir")"
+	echo "${dir} is not on PATH."
+	echo "Proposed line for ${rc}:"
+	echo "  ${line}"
+	if ! ask_yn "Write that line to ${rc}?"; then
+		echo "Left ${rc} unchanged. For this shell:"
+		echo "  ${line}"
+		return 0
+	fi
+	if ensure_path_line "$rc" "$dir"; then
+		PATH_RC="$rc"
+		echo "Open a new terminal so the shell reads ${rc}."
+	fi
+}
+
+hint_has() {
+	local needle="$1"
+	local hay="$2"
+	case " ${hay} " in
+		*" ${needle} "*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+session_hints() {
+	local hints=""
+	if command -v hyprctl >/dev/null 2>&1 || command -v Hyprland >/dev/null 2>&1; then
+		hints="${hints} hypr"
+	fi
+	if command -v wayfire >/dev/null 2>&1; then
+		hints="${hints} wayfire"
+	fi
+	if command -v labwc >/dev/null 2>&1; then
+		hints="${hints} labwc"
+	fi
+	printf '%s' "${hints# }"
+}
+
+# Prints hypr, labwc, wayfire, or xdg.
+# desktop and hints default to this machine when omitted.
+# Pass empty strings to ignore the live session (tests).
+choose_autostart_kind() {
+	local home="$1"
+	local distro="$2"
+	local omarchy_flag="$3"
+	local desktop="${4-__env__}"
+	local hints="${5-__env__}"
+	if [[ "$desktop" == "__env__" ]]; then
+		desktop="${XDG_CURRENT_DESKTOP:-} ${XDG_SESSION_DESKTOP:-}"
+	fi
+	if [[ "$hints" == "__env__" ]]; then
+		hints="$(session_hints)"
+	fi
+	if [[ "$omarchy_flag" == "1" || "$distro" == "omarchy" ]]; then
+		printf 'hypr'
+		return 0
+	fi
+	# The running session wins over a leftover config from another compositor.
+	if [[ "$desktop" == *[Hh]ypr* ]]; then
+		printf 'hypr'
+		return 0
+	fi
+	if [[ "$desktop" == *[Ww]ayfire* ]]; then
+		printf 'wayfire'
+		return 0
+	fi
+	if [[ "$desktop" == *[Ll]abwc* ]]; then
+		printf 'labwc'
+		return 0
+	fi
+	if [[ -f "${home}/.config/hypr/hyprland.conf" || -f "${home}/.config/hypr/hyprland.lua" || -f "${home}/.config/hypr/autostart.conf" || -f "${home}/.config/hypr/autostart.lua" || -f "${home}/.config/omarchy/autostart.conf" ]]; then
+		printf 'hypr'
+		return 0
+	fi
+	if [[ -f "${home}/.config/wayfire.ini" ]]; then
+		printf 'wayfire'
+		return 0
+	fi
+	if [[ -d "${home}/.config/labwc" ]]; then
+		printf 'labwc'
+		return 0
+	fi
+	if hint_has hypr "$hints"; then
+		printf 'hypr'
+		return 0
+	fi
+	if hint_has wayfire "$hints"; then
+		printf 'wayfire'
+		return 0
+	fi
+	if hint_has labwc "$hints"; then
+		printf 'labwc'
+		return 0
+	fi
+	if [[ "$distro" == "pi" ]]; then
+		printf 'labwc'
+		return 0
+	fi
+	printf 'xdg'
+}
+
+install_labwc_autostart() {
+	local home="$1"
+	local bin="$2"
+	local file="${home}/.config/labwc/autostart"
+	local line="${bin} --fullscreen &"
+	mkdir -p "$(dirname "$file")"
+	if [[ -f "$file" ]] && grep -qF 'nova-letterbox' "$file"; then
+		echo "Already present: ${file}"
+		return 0
+	fi
+	touch "$file"
+	printf '\n# nova-letterbox-begin\n# packaging/pi/labwc-autostart (full path, so PATH is not required)\n%s\n# nova-letterbox-end\n' "$line" >>"$file"
+	echo "Updated ${file}"
+}
+
+install_wayfire_autostart() {
+	local home="$1"
+	local bin="$2"
+	local file="${home}/.config/wayfire.ini"
+	local line="nova_letterbox = ${bin} --fullscreen"
+	local tmp
+	mkdir -p "$(dirname "$file")"
+	if [[ -f "$file" ]] && grep -qE '^[[:space:]]*nova_letterbox[[:space:]]*=' "$file"; then
+		echo "Already present: ${file}"
+		return 0
+	fi
+	if [[ ! -f "$file" ]]; then
+		cat >"$file" <<EOF
+[autostart]
+${line}
+EOF
+		echo "Wrote ${file}"
+		echo "Blanking: set dpms_timeout=-1 under [idle] if the panel sleeps. See docs/pi-kiosk.md."
+		return 0
+	fi
+	if grep -q '^\[autostart\]' "$file"; then
+		tmp="$(mktemp)"
+		if awk -v line="$line" '
+			BEGIN { done = 0 }
+			/^\[autostart\]/ && !done {
+				print
+				print line
+				done = 1
+				next
+			}
+			{ print }
+		' "$file" >"$tmp"; then
+			mv "$tmp" "$file"
+			echo "Updated ${file}"
+			return 0
+		fi
+		rm -f "$tmp"
+		echo "warning: could not update ${file}" >&2
+		return 1
+	fi
+	printf '\n# nova-letterbox-begin\n[autostart]\n%s\n# nova-letterbox-end\n' "$line" >>"$file"
+	echo "Updated ${file}"
+}
+
+install_xdg_autostart() {
+	local home="$1"
+	local bin="$2"
+	local dest="${home}/.config/autostart/nova-letterbox.desktop"
+	mkdir -p "$(dirname "$dest")"
+	cat >"$dest" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=NOVA Letterbox
+Comment=1920x480 telemetry letterbox
+Exec=${bin} --fullscreen
+Icon=nova-letterbox
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+EOF
+	echo "Autostart: ${dest}"
+}
+
+install_session_autostart() {
+	local home="$1"
+	local distro="$2"
+	local desktop="${3-__env__}"
+	local hints="${4-__env__}"
+	local kind
+	kind="$(choose_autostart_kind "$home" "$distro" "$OMARCHY" "$desktop" "$hints")"
+	AUTOSTART_KIND="$kind"
+	case "$kind" in
+		hypr) install_hypr_autostart "$home" ;;
+		labwc) install_labwc_autostart "$home" "$(cli_link)" ;;
+		wayfire) install_wayfire_autostart "$home" "$(cli_link)" ;;
+		xdg) install_xdg_autostart "$home" "$(cli_link)" ;;
+		*)
+			echo "warning: unknown autostart kind ${kind}" >&2
+			return 1
+			;;
+	esac
+}
+
+autostart_blurb() {
+	local kind="$1"
+	case "$kind" in
+		hypr)
+			printf '%s' "Hyprland exec-once and a fullscreen rule on monitor HDMI-A-1"
+			;;
+		labwc)
+			printf '%s' "labwc (~/.config/labwc/autostart). wayfire and the systemd user unit stay in docs/pi-kiosk.md"
+			;;
+		wayfire)
+			printf '%s' "wayfire (~/.config/wayfire.ini). labwc and the systemd user unit stay in docs/pi-kiosk.md"
+			;;
+		xdg)
+			printf '%s' "a desktop autostart entry at ~/.config/autostart/nova-letterbox.desktop"
+			;;
+		*)
+			printf '%s' "login autostart"
+			;;
+	esac
+}
+
+wizard_autostart() {
+	local distro="$1"
+	local kind
+	if [[ "$AUTOSTART" == "1" ]]; then
+		echo "Autostart requested by --autostart."
+		install_session_autostart "$HOME" "$distro"
+		return 0
+	fi
+	kind="$(choose_autostart_kind "$HOME" "$distro" "$OMARCHY")"
+	echo "Would enable: $(autostart_blurb "$kind")"
+	if ! ask_yn "Enable autostart?"; then
+		echo "Autostart left off. Re-run with --autostart to add it."
+		return 0
+	fi
+	AUTOSTART=1
+	install_session_autostart "$HOME" "$distro"
 }
 
 main() {
-	local arch asset tag
+	local arch asset tag pm
 	parse_args "$@"
 	require_linux
 	if os_release_is_omarchy /etc/os-release; then
 		OMARCHY=1
 	fi
-	command -v python3 >/dev/null 2>&1 || die "python3 is required to check the downloaded ELF"
 	arch="$(detect_arch)"
+	DISTRO="$(detect_distro /etc/os-release)"
+	pm="$(package_manager_for_distro "$DISTRO")"
+	if interactive_mode; then
+		ui_step 1 "Welcome"
+		wizard_welcome "$arch" "$DISTRO" "$pm"
+		ui_step 2 "Dependencies"
+		wizard_dependencies "$pm"
+	fi
+	command -v python3 >/dev/null 2>&1 || die "python3 is required to check the downloaded ELF"
 	asset="$(asset_for_arch "$arch")"
 	tag="$(normalize_version_tag "${NOVA_VERSION:-}")"
 	begin_install_tmp
 
+	if interactive_mode; then
+		ui_step 3 "Download and install"
+	fi
 	echo "Installing NOVA Letterbox for ${arch}"
 	echo "  binary: $(app_binary)"
 	echo "  command: $(cli_link)"
@@ -694,8 +1423,16 @@ main() {
 	write_icon
 	write_desktop
 	refresh_desktop_caches
-	if [[ "$AUTOSTART" == 1 ]]; then
-		install_hypr_autostart "$HOME"
+	if interactive_mode; then
+		ui_step 4 "PATH"
+		wizard_path
+		ui_step 5 "Autostart"
+		wizard_autostart "$DISTRO"
+	elif [[ "$AUTOSTART" == 1 ]]; then
+		install_session_autostart "$HOME" "$DISTRO"
+	fi
+	if interactive_mode; then
+		ui_step 6 "Done"
 	fi
 	print_next_steps
 	end_install_tmp

@@ -23,7 +23,9 @@ What it writes:
 
 The desktop entry is named **NOVA Letterbox**. `Exec` calls `omarchy-launch-or-focus` so Super+Space focuses the window when it is already open, and launches it otherwise. It is not a Chromium webapp. `StartupWMClass=NOVA Letterbox` matches the Godot 4.3 window class (`application/config/name`, also the Wayland app id).
 
-After install, open it from the launcher: **Super+Space**, then NOVA Letterbox. Nothing starts at login unless you pass `--autostart`.
+After install, open it from the launcher: **Super+Space**, then NOVA Letterbox. Nothing starts at login unless you say yes in the terminal wizard or pass `--autostart`. `--yes` and a pipe do not ask and do not enable autostart unless `--autostart` is present.
+
+In a terminal the same script also offers recommended packages (`iputils`, `iw`, `wireless_tools`, `ethtool`, and optionally `networkmanager`) and can append `~/.local/bin` to your shell rc if it is not on `PATH`.
 
 ```bash
 ./install-omarchy.sh --fullscreen

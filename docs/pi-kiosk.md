@@ -15,6 +15,8 @@ gh api repos/velocityeu/nova-letterbox/contents/install.sh \
 
 That writes the binary to `~/.local/share/nova-letterbox/nova-letterbox` and a symlink at `~/.local/bin/nova-letterbox`. A `v*` release is the default download. Until one exists, the script uses the `continuous` prerelease built from `main` and says so.
 
+On a terminal the installer is a text wizard. It can install missing telemetry packages (`iputils-ping`, `iw`, `wireless-tools`, `ethtool`, and optionally `network-manager`) after you confirm, and it asks before autostart. The Pi default is the labwc line below, written with the full path to `~/.local/bin/nova-letterbox` so the session does not depend on `PATH`. If the session is wayfire, or `~/.config/wayfire.ini` already exists, it updates that file instead. The systemd user unit below is not enabled automatically. `bash install.sh --yes` and a pipe do not install packages, edit `PATH`, or enable autostart unless you also pass `--autostart`.
+
 ```bash
 nova-letterbox --fullscreen
 nova-letterbox --version

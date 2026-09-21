@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Omarchy (Arch + Hyprland) install. Same release binary and paths as install.sh.
-# Pass --autostart for Hyprland login autostart and the 1920x480 window rule.
+# A terminal runs the text wizard (dependencies, PATH, autostart question).
+# Pass --autostart to enable Hyprland login autostart without asking.
+# --yes, NOVA_NONINTERACTIVE=1, or a pipe skips the wizard.
 #
 #   ./install-omarchy.sh
 #   ./install-omarchy.sh --autostart
