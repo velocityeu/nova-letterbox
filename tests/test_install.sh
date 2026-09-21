@@ -392,4 +392,15 @@ grep -q '^Name=NOVA Letterbox$' "$xdg" || fail "xdg name"
 grep -q '^exec-once = nova-letterbox$' "${wiz_home}/.config/hypr/autostart.conf" || fail "session autostart hypr"
 rm -rf "$wiz_home"
 
+keys_home="$(mktemp -d)"
+keys_out="$(HOME="$keys_home" bash -c '
+	set -euo pipefail
+	source ./install.sh
+	parse_args
+	print_next_steps
+')"
+[[ "$keys_out" == *"1 Simple"* && "$keys_out" == *"2 Complete"* && "$keys_out" == *"Tab toggle"* ]] || fail "done view keys"
+[[ "$keys_out" == *"Esc or Q quit"* ]] || fail "done quit key"
+rm -rf "$keys_home"
+
 echo "OK"

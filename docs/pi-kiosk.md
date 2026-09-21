@@ -2,7 +2,7 @@
 
 Run the ARM64 release binary on 64-bit Raspberry Pi OS with a desktop session (labwc or wayfire). Do not install the Godot editor on the Pi for day-to-day use. The binary embeds the PCK. No credentials, API tokens, or device secrets belong in this project.
 
-The window is **1920×480**, fullscreen, GL Compatibility. With the window focused: `1` Simple, `2` Complete, `Tab` toggles. The cursor hides while fullscreen. Missing Wi-Fi or the Pi temperature sensor stays at an explicit offline or N/A state; the shell still starts.
+The window is **1920×480**, fullscreen, GL Compatibility. With the window focused: `1` Simple, `2` Complete, `Tab` toggles, `Esc` or `Q` quits. The cursor hides while fullscreen. Missing Wi-Fi or the Pi temperature sensor stays at an explicit offline or N/A state; the shell still starts.
 
 ## Install on the Pi
 

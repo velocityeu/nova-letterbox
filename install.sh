@@ -647,7 +647,9 @@ Engine health check (no window):
 Letterbox version line, then exit:
   NOVA_PRINT_VERSION=1 ${bin}
 
-Keys, with the window focused: 1 Simple, 2 Complete, Tab toggles.
+Keys, with the window focused:
+  1 Simple  ·  2 Complete  ·  Tab toggle
+  Esc or Q quit
 The project uses the GL Compatibility renderer.
 
 Pi HDMI 1920×480, blanking, and labwc/wayfire:

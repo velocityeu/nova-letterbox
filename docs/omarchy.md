@@ -55,6 +55,6 @@ hl.monitor({ output = "HDMI-A-1", mode = "1920x480@60", position = "auto", scale
 
 `hyprctl monitors all` lists the modes the panel advertises. This project does not rotate a portrait 480×1920 mode.
 
-Keys, with the window focused: `1` Simple, `2` Complete, `Tab` toggles. Renderer is GL Compatibility. If the window does not map, try `nova-letterbox --fullscreen --display-driver x11`.
+Keys, with the window focused: `1` Simple, `2` Complete, `Tab` toggles, `Esc` or `Q` quits. Renderer is GL Compatibility. If the window does not map, try `nova-letterbox --fullscreen --display-driver x11`.
 
 Examples of the lines the installer appends are in `packaging/omarchy/`.
