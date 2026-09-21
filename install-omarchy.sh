@@ -36,7 +36,8 @@ resolve_token() {
 # Print the path of install.sh: the sibling in a checkout, or a temp download.
 locate_install_sh() {
 	local self dir token tmp url
-	self="${BASH_SOURCE[0]}"
+	# Unset when this file is piped to bash. Do not touch BASH_SOURCE[0] then.
+	self="${BASH_SOURCE[0]:-}"
 	if [[ -n "$self" && -f "$self" ]]; then
 		dir="$(cd "$(dirname "$self")" && pwd)"
 		if [[ -f "${dir}/install.sh" ]]; then
