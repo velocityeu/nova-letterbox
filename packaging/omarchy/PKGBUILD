@@ -1,0 +1,46 @@
+# Local pacman package for the prebuilt NOVA Letterbox binary.
+# The repo is private and has no SPDX license file. This is not an AUR submission.
+#
+# Requires a published release tag and `gh auth login` (or GH_TOKEN).
+# Set pkgver to the release without the leading v, then:
+#   cd packaging/omarchy && makepkg -si
+#
+# The supported Omarchy path is still ../install-omarchy.sh at the repo root.
+
+pkgname=nova-letterbox
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="NOVA 1920x480 telemetry letterbox"
+arch=('x86_64' 'aarch64')
+url="https://github.com/velocityeu/nova-letterbox"
+license=('LicenseRef-proprietary')
+depends=('libx11' 'libxcursor' 'libxinerama' 'libxrandr' 'libxi' 'libglvnd' 'alsa-lib')
+makedepends=('github-cli')
+source=("nova-letterbox.desktop")
+sha256sums=('SKIP')
+
+prepare() {
+	local asset tag
+	tag="v${pkgver}"
+	case "$CARCH" in
+		x86_64) asset="nova-letterbox-linux-x86_64" ;;
+		aarch64) asset="nova-letterbox-linux-arm64" ;;
+		*) echo "unsupported arch: ${CARCH}" >&2; exit 1 ;;
+	esac
+	command -v gh >/dev/null 2>&1 || { echo "gh is required" >&2; exit 1; }
+	gh release download "$tag" \
+		--repo velocityeu/nova-letterbox \
+		--pattern "$asset" \
+		--output "$asset" \
+		--clobber
+}
+
+package() {
+	local asset
+	case "$CARCH" in
+		x86_64) asset="nova-letterbox-linux-x86_64" ;;
+		aarch64) asset="nova-letterbox-linux-arm64" ;;
+	esac
+	install -Dm755 "$asset" "${pkgdir}/usr/bin/nova-letterbox"
+	install -Dm644 nova-letterbox.desktop "${pkgdir}/usr/share/applications/nova-letterbox.desktop"
+}

@@ -10,10 +10,25 @@ var _view: Node
 
 
 func _ready() -> void:
+	if _print_version():
+		return
 	_show_mode(Mode.SIMPLE)
 	var preview := OS.get_environment("NOVA_PREVIEW")
 	if not preview.is_empty():
 		await _preview(preview)
+
+
+## One stdout line for journald. NOVA_PRINT_VERSION=1 or a user arg `--version`
+## (after `--`) prints that line and exits. The engine's own `--version` still
+## prints the Godot version and never reaches this scene.
+func _print_version() -> bool:
+	var version := str(ProjectSettings.get_setting("application/config/version", "dev"))
+	print("NOVA Letterbox %s" % version)
+	var user_args := OS.get_cmdline_user_args()
+	if OS.get_environment("NOVA_PRINT_VERSION") == "1" or user_args.has("--version"):
+		get_tree().quit(0)
+		return true
+	return false
 
 
 func _unhandled_input(event: InputEvent) -> void:

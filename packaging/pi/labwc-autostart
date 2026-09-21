@@ -1,0 +1,3 @@
+# Append to ~/.config/labwc/autostart (Raspberry Pi OS labwc).
+# Do not replace the file: the session already starts other programs there.
+nova-letterbox --fullscreen &

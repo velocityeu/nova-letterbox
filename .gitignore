@@ -24,3 +24,4 @@ Thumbs.db
 
 # Exported Linux binaries (desktop x86_64 and Pi ARM64). Do not commit.
 /build/
+/dist/

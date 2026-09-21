@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=NOVA Letterbox
+Comment=1920x480 telemetry letterbox
+Exec=nova-letterbox --fullscreen
+Terminal=false
+Categories=Utility;
+StartupNotify=false
