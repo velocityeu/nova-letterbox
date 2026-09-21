@@ -1,0 +1,22 @@
+[gd_resource type="Theme" load_steps=3 format=3]
+
+[ext_resource type="FontFile" path="res://fonts/IBMPlexSans-Regular.ttf" id="1_regular"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
+bg_color = Color(0.098039, 0.101961, 0.109804, 1)
+border_color = Color(0.360784, 0.266667, 0.188235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[resource]
+default_font = ExtResource("1_regular")
+default_font_size = 15
+Label/colors/font_color = Color(0.768627, 0.807843, 0.839216, 1)
+Panel/styles/panel = SubResource("StyleBoxFlat_frame")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_frame")
