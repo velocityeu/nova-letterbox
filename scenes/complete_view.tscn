@@ -1,0 +1,59 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/complete_view.gd" id="1_view"]
+[ext_resource type="PackedScene" path="res://scenes/dial.tscn" id="2_dial"]
+[ext_resource type="Script" path="res://scripts/top_bar.gd" id="3_top"]
+[ext_resource type="Script" path="res://scripts/sparkline.gd" id="4_spark"]
+[ext_resource type="Script" path="res://scripts/network_path.gd" id="5_path"]
+[ext_resource type="Script" path="res://scripts/mini_ring.gd" id="6_ring"]
+[ext_resource type="Script" path="res://scripts/ribbon.gd" id="7_ribbon"]
+
+[node name="CompleteView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_view")
+
+[node name="TopBar" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("3_top")
+
+[node name="Download" parent="." instance=ExtResource("2_dial")]
+layout_mode = 1
+
+[node name="Upload" parent="." instance=ExtResource("2_dial")]
+layout_mode = 1
+
+[node name="Ping" parent="." instance=ExtResource("2_dial")]
+layout_mode = 1
+
+[node name="Sparkline" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("4_spark")
+
+[node name="NetworkPath" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("5_path")
+
+[node name="Cpu" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("6_ring")
+icon_name = "chip"
+
+[node name="Ram" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("6_ring")
+icon_name = "ram"
+
+[node name="Ribbon" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("7_ribbon")
