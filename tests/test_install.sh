@@ -69,6 +69,23 @@ fi
 bash ./install.sh --help >/dev/null
 bash ./install-omarchy.sh --help >/dev/null
 
+# Stdin has no BASH_SOURCE. set -u must not abort before --help.
+pipe_help="$(cat ./install.sh | bash -s -- --help 2>&1)" || fail "piped install.sh: ${pipe_help}"
+[[ "$pipe_help" == *Usage:* ]] || fail "piped install.sh did not print help"
+
+# install-omarchy.sh may download install.sh after the guard. Either --help
+# succeeds, or a later fetch fails. An unbound BASH_SOURCE is the regression.
+set +e
+omarchy_pipe="$(cat ./install-omarchy.sh | bash -s -- --help 2>&1)"
+omarchy_pipe_status=$?
+set -e
+if [[ "$omarchy_pipe" == *"unbound variable"* ]]; then
+	fail "piped install-omarchy.sh: ${omarchy_pipe}"
+fi
+if [[ "$omarchy_pipe_status" -eq 0 ]]; then
+	[[ "$omarchy_pipe" == *Usage:* ]] || fail "piped install-omarchy.sh help missing"
+fi
+
 mapfile -t elfs < <(python3 - <<'PY'
 import struct, pathlib, tempfile, os
 def write(machine, path):

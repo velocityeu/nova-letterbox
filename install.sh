@@ -685,6 +685,11 @@ main() {
 	fi
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+# A file sets BASH_SOURCE. Stdin (`curl … | bash`) leaves it unset, and
+# `set -u` then rejects BASH_SOURCE[0]. Run main when executed or piped,
+# and skip it when this file is sourced.
+_nova_self="${BASH_SOURCE[0]:-}"
+if [[ -z "$_nova_self" || "$_nova_self" == "$0" ]]; then
 	main "$@"
 fi
+unset -v _nova_self
