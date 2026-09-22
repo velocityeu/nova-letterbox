@@ -8,14 +8,19 @@ Live captures: [Simple view](images/docs-app-simple.png) and [Complete view](ima
 
 ## Install on the Pi
 
-The repo is private. Log in first (`gh auth login`) or export `GH_TOKEN`, then:
+The repository is public. The current stable release is **v0.1.0** (`NOVA Letterbox 0.1.0`).
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install.sh \
-  -H "Accept: application/vnd.github.raw" | bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
 ```
 
-That writes the binary to `~/.local/share/nova-letterbox/nova-letterbox` and a symlink at `~/.local/bin/nova-letterbox`. A `v*` release is the default download. Until one exists, the script uses the `continuous` prerelease built from `main` and says so.
+Noninteractive:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash -s -- --yes
+```
+
+That writes the binary to `~/.local/share/nova-letterbox/nova-letterbox` and a symlink at `~/.local/bin/nova-letterbox`. The installer prefers the latest stable `v*` release (v0.1.0 today). If none exists, it uses the `continuous` prerelease built from `main` and says so. Anonymous GitHub API lookups are limited to 60 per hour. If that delays `releases/latest`, rerun after `gh auth login` or with `GH_TOKEN` set, or pin `NOVA_VERSION=v0.1.0` (or `continuous`). A private fork needs that token.
 
 On a terminal the installer is a text wizard. It can install missing telemetry packages (`iputils-ping`, `iw`, `wireless-tools`, `ethtool`, and optionally `network-manager`) after you confirm, and it asks before autostart. The Pi default is the labwc line below, written with the full path to `~/.local/bin/nova-letterbox` so the session does not depend on `PATH`. If the session is wayfire, or `~/.config/wayfire.ini` already exists, it updates that file instead. The systemd user unit below is not enabled automatically. `bash install.sh --yes` and a pipe do not install packages, edit `PATH`, or enable autostart unless you also pass `--autostart`.
 
@@ -85,6 +90,12 @@ systemctl --user enable --now nova-letterbox.service
 ## Uninstall
 
 The same `uninstall.sh` as a Linux PC or Omarchy. In a terminal it asks first. `--yes` skips the questions and also removes the installer PATH block and Godot app data.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh | bash -s -- --yes
+```
+
+From a checkout:
 
 ```bash
 ./uninstall.sh

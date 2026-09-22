@@ -20,24 +20,28 @@ Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
 Linux only. Three layouts today, one installer: a generic desktop, a Raspberry Pi 5 HDMI kiosk, and Omarchy (Arch + Hyprland). The script reads `uname -m` and downloads `nova-letterbox-linux-x86_64` or `nova-letterbox-linux-arm64`. The PCK is embedded in that binary.
 
-### Private repo
-
-The repository is **private**. Log in with `gh auth login` (an account that can read this repo), then:
+### One-liner
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install.sh --jq .content | base64 -d | bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
 ```
 
-With a token that can read this repo, in `GH_TOKEN` or `GITHUB_TOKEN`:
+The repository is public. The current stable release is **[v0.1.0](https://github.com/velocityeu/nova-letterbox/releases/tag/v0.1.0)** (`NOVA Letterbox 0.1.0`). The installer prefers that latest stable tag, and uses the rolling `continuous` prerelease only when no stable `v*` release exists.
+
+Noninteractive (no package installs, no PATH edit, no autostart):
 
 ```bash
-curl -fsSL \
-  -H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}" \
-  -H "Accept: application/vnd.github.raw" \
-  https://api.github.com/repos/velocityeu/nova-letterbox/contents/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash -s -- --yes
 ```
 
-Anonymous `curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash` works only once the repo is public (the script and the release assets). Until then that URL is not available.
+Anonymous GitHub API lookups are limited to 60 per hour. That limit can delay the `releases/latest` check the installer uses to find the stable tag. The script on `raw.githubusercontent.com` and the release asset URLs stay available. When a lookup hits the limit, authenticate and rerun the same command (`gh auth login`, or `GH_TOKEN` / `GITHUB_TOKEN`), or pin a version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | NOVA_VERSION=v0.1.0 bash -s -- --yes
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | NOVA_VERSION=continuous bash
+```
+
+`NOVA_VERSION=0.1.0` is accepted; a leading `v` is added. A private fork uses the same commands with `gh auth login` or `GH_TOKEN`.
 
 ### Text wizard or one-liner
 
@@ -45,9 +49,9 @@ In a terminal, `bash install.sh` (and `./install-omarchy.sh`) runs a plain-text 
 
 `bash install.sh --yes`, `NOVA_NONINTERACTIVE=1`, or a pipe (the one-liner above) skips every prompt. That path does not install packages, does not edit shell startup files, and does not enable autostart unless you also pass `--autostart`.
 
-![install.sh --yes --prefix ~/.local: noninteractive install transcript, continuous prerelease, paths, and keys](docs/images/docs-install-run.png)
+![install.sh --yes --prefix ~/.local: noninteractive install transcript, paths, and keys](docs/images/docs-install-run.png)
 
-*`install.sh --yes --prefix ~/.local` — the full noninteractive transcript, including the continuous-prerelease fallback when no stable `v*` release exists.*
+*`install.sh --yes --prefix ~/.local` — the full noninteractive transcript. This capture shows the `continuous` fallback used when no stable `v*` release exists. A current install prefers stable v0.1.0.*
 
 ### After install
 
@@ -90,20 +94,20 @@ In a terminal the wizard asks before enabling autostart. On Pi OS the default is
 Same binary as the Linux PC and the Pi. `install-omarchy.sh`, or `install.sh --omarchy`, writes the desktop entry (Super+Space → **NOVA Letterbox**). In a terminal the wizard asks before Hyprland autostart. `--autostart` adds it without asking. `--yes` and a pipe do not. Notes: [`docs/omarchy.md`](docs/omarchy.md).
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh --jq .content | base64 -d | bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install-omarchy.sh | bash
 ```
 
 Hyprland autostart:
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh --jq .content | base64 -d | bash -s -- --autostart
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install-omarchy.sh | bash -s -- --autostart
 ```
 
 From a checkout: `./install-omarchy.sh` or `bash install.sh --omarchy`. On a machine whose `/etc/os-release` already says Omarchy, plain `install.sh` writes the same desktop entry.
 
 ### Releases
 
-The installer prefers the latest **stable** `v*` release. If none exists, it falls back to the **`continuous`** prerelease from `main` and says so. A push to `main` updates `continuous`. A `v*` tag is the stable release. The download needs that workflow to have succeeded at least once.
+The installer prefers the latest **stable** `v*` release. The current one is **[v0.1.0](https://github.com/velocityeu/nova-letterbox/releases/tag/v0.1.0)**. If none exists, it falls back to the **`continuous`** prerelease from `main` and says so. A push to `main` updates `continuous`. A `v*` tag is the stable release.
 
 Pin a release by exporting `NOVA_VERSION` in the shell that runs the script, then use the same one-liner:
 
@@ -117,6 +121,12 @@ export NOVA_VERSION=continuous  # rolling build from main
 One script for a Linux PC, a Raspberry Pi, and Omarchy. In a terminal it asks before removing anything, before `sudo`, before editing `~/.bashrc`, `~/.zshrc`, or `~/.profile`, and before deleting Godot app data. `--yes`, `NOVA_NONINTERACTIVE=1`, or a pipe skips the questions and removes the install, autostart lines, the installer PATH blocks, and that app data.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh | bash -s -- --yes
+```
+
+From a checkout:
+
+```bash
 ./uninstall.sh
 ./uninstall.sh --yes
 ./uninstall.sh --system          # /usr/local; sudo when those files are not writable
@@ -125,12 +135,6 @@ One script for a Linux PC, a Raspberry Pi, and Omarchy. In a terminal it asks be
 ```
 
 The default removes the user install (`~/.local/share/nova-letterbox/`, the `~/.local/bin/nova-letterbox` symlink, the desktop entry, and icons). If `/usr/local` also has a copy, that copy is removed in the same run. `--user` leaves `/usr/local` alone. `--system` leaves `~/.local` alone. `--prefix DIR` removes only `DIR/share` and `DIR/bin`.
-
-From the private repo, the same pattern as install:
-
-```bash
-gh api repos/velocityeu/nova-letterbox/contents/uninstall.sh --jq .content | base64 -d | bash -s -- --yes
-```
 
 ![uninstall.sh --yes: removed user install, desktop entry, icon, and Godot app data; shared packages left installed](docs/images/docs-uninstall-run.png)
 

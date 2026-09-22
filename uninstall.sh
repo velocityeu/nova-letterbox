@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Remove a NOVA Letterbox install and the files the installer added.
 #
+#   curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh | bash
 #   ./uninstall.sh
 #   ./uninstall.sh --yes
 #   ./uninstall.sh --system
 #   ./install-omarchy.sh --uninstall
+#
+# The repository is public. This script does not call the GitHub API.
 #
 # A terminal asks before removing anything, before sudo, before shell
 # startup edits, and before deleting Godot app data. Godot creates
@@ -74,6 +77,10 @@ under godot/app_userdata. The rest of that tree is left alone.
 
 Not removed: distro packages, Hyprland monitor modes, Pi blanking, and a
 running nova-letterbox process (quit that window yourself).
+
+The repository is public:
+
+  curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh | bash
 
 Environment:
   NOVA_NONINTERACTIVE=1   same as --yes

@@ -272,6 +272,48 @@ parse_args
 help_text="$(bash ./install.sh --help 2>&1)"
 [[ "$help_text" == *"--yes"* ]] || fail "help missing --yes"
 [[ "$help_text" == *"NOVA_NONINTERACTIVE"* ]] || fail "help missing NOVA_NONINTERACTIVE"
+[[ "$help_text" == *"optional"* ]] || fail "help should describe GH_TOKEN as optional"
+[[ "$help_text" == *"v0.1.0"* ]] || fail "help should name the stable tag"
+if [[ "$help_text" == *"private repo"* ]]; then
+	fail "help still requires a private repo"
+fi
+
+rate_body="$(mktemp)"
+printf '%s\n' '{"message":"API rate limit exceeded for 1.2.3.4."}' >"$rate_body"
+classify_release_http 200 "$rate_body" || fail "HTTP 200 should succeed"
+if classify_release_http 404 "$rate_body"; then
+	fail "HTTP 404 should not succeed"
+fi
+set +e
+classify_release_http 403 "$rate_body"
+rate_rc=$?
+set -e
+[[ "$rate_rc" -eq 2 ]] || fail "HTTP 403 rate limit should be 2, got ${rate_rc}"
+set +e
+classify_release_http 429 "$rate_body"
+rate_rc=$?
+set -e
+[[ "$rate_rc" -eq 2 ]] || fail "HTTP 429 rate limit should be 2, got ${rate_rc}"
+printf '%s\n' '{"message":"Not Found"}' >"$rate_body"
+set +e
+classify_release_http 404 "$rate_body"
+miss_rc=$?
+set -e
+[[ "$miss_rc" -eq 1 ]] || fail "HTTP 404 should be 1, got ${miss_rc}"
+set +e
+classify_release_http 403 "$rate_body"
+miss_rc=$?
+set -e
+[[ "$miss_rc" -eq 1 ]] || fail "HTTP 403 without a rate-limit body should be 1, got ${miss_rc}"
+rm -f "$rate_body"
+
+_NOVA_API_RATE_LIMITED=1
+rate_hint="$(auth_hint 2>&1)"
+[[ "$rate_hint" == *"rate limit"* ]] || fail "rate-limit hint missing"
+if [[ "$rate_hint" == *"This repo is private"* ]]; then
+	fail "rate-limit hint still says the repo is private"
+fi
+_NOVA_API_RATE_LIMITED=0
 
 [[ "$(package_for ping apt)" == "iputils-ping" ]] || fail "apt ping package"
 [[ "$(package_for ping pacman)" == "iputils" ]] || fail "pacman ping package"
