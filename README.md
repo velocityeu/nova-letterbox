@@ -4,6 +4,16 @@ Display-only telemetry shell for a Raspberry Pi 5 driving a Waveshare 8.8" IPS s
 
 The UI is a Godot 4 scene shell. Gauges, the sparkline, and the status ribbon read the Linux host through the `Telemetry` autoload (`scripts/telemetry.gd`). The clock in Complete view reads the system time.
 
+Simple is the default (`1`). Complete is the alternate (`2`). `Tab` toggles. Both captures are the live window at **1920×480**.
+
+![Simple view, 1920×480: Download, Upload, and Ping gauges, Wi-Fi not connected, Ethernet link](docs/images/docs-app-simple.png)
+
+*Simple view — Download Mbps, Upload Mbps, Ping ms, and the Wi-Fi / Ethernet footer.*
+
+![Complete view, 1920×480: clock, public and local IP, VPN offline, throughput, network path, CPU, RAM, and the status ribbon](docs/images/docs-app-complete.png)
+
+*Complete view — clock, public and local IP, VPN, throughput, the network path, CPU and RAM, and the status ribbon.*
+
 Design references (the locked mocks) are in [`docs/design/`](docs/design/).
 
 ## Install
@@ -35,6 +45,10 @@ In a terminal, `bash install.sh` (and `./install-omarchy.sh`) runs a plain-text 
 
 `bash install.sh --yes`, `NOVA_NONINTERACTIVE=1`, or a pipe (the one-liner above) skips every prompt. That path does not install packages, does not edit shell startup files, and does not enable autostart unless you also pass `--autostart`.
 
+![install.sh --yes --prefix ~/.local: noninteractive install transcript, continuous prerelease, paths, and keys](docs/images/docs-install-run.png)
+
+*`install.sh --yes --prefix ~/.local` — the full noninteractive transcript, including the continuous-prerelease fallback when no stable `v*` release exists.*
+
 ### After install
 
 The command is `~/.local/bin/nova-letterbox`, a symlink to `~/.local/share/nova-letterbox/nova-letterbox`. No sudo unless you accept a package install, or `--system` cannot write `/usr/local`. A desktop entry and icon land under `~/.local/share`. If `~/.local/bin` is not on `PATH`, the wizard can append an `export` to `~/.bashrc`, `~/.zshrc`, or `~/.profile` after you confirm. The one-liner only prints the `export` line.
@@ -48,6 +62,10 @@ With the window focused:
 
 - `1` Simple · `2` Complete · `Tab` toggle
 - `Esc` or `Q` quit · `F11` toggle fullscreen
+
+![Install success and keys: 1 Simple, 2 Complete, Tab toggle, Esc or Q quit, F11 fullscreen](docs/images/docs-install-done.png)
+
+*End of that same install: installed path, version check, and the keys.*
 
 ```bash
 NOVA_PRINT_VERSION=1 nova-letterbox
@@ -114,6 +132,10 @@ From the private repo, the same pattern as install:
 gh api repos/velocityeu/nova-letterbox/contents/uninstall.sh --jq .content | base64 -d | bash -s -- --yes
 ```
 
+![uninstall.sh --yes: removed user install, desktop entry, icon, and Godot app data; shared packages left installed](docs/images/docs-uninstall-run.png)
+
+*`uninstall.sh --yes` — paths removed, and packages left installed.*
+
 What it removes:
 
 - The install directory, command symlink, `nova-letterbox.desktop`, and `nova-letterbox` icons under the chosen prefix
@@ -137,6 +159,8 @@ What it does not remove:
 The script prints a summary of what was removed and what was left. It exits 0 when every file it tried to delete is gone, including when nothing was installed. It exits non-zero when a delete fails (for example `sudo` was denied). Saying no to a prompt is not a failure.
 
 ## Views
+
+Captures of both layouts are at the top of this page.
 
 | View | When | What you see |
 | --- | --- | --- |
@@ -250,6 +274,7 @@ scripts/publish-release.sh   upload dist/ binaries to a GitHub Release
 .github/workflows/release.yml  build on main and v* tags
 docs/pi-kiosk.md           HDMI, blanking, labwc/wayfire
 docs/omarchy.md            Omarchy desktop entry and optional Hyprland autostart
+docs/images/               Simple and Complete views; install and uninstall transcripts
 packaging/                 Pi session snippets and Omarchy desktop/autostart examples
 scenes/main.tscn           boots Simple; switches views
 scenes/simple_view.tscn    default letterbox
