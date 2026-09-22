@@ -2,13 +2,15 @@
 
 [Omarchy](https://omarchy.org/) is the Arch-based Hyprland desktop. The install is the same Linux binary as the Pi: no pacman package and no AUR package.
 
-The repo is private. `GH_TOKEN` or `gh auth login` is required before any of the commands below.
+The repository is public. The current stable release is **v0.1.0**.
 
 ## Install
 
 ```bash
-./install-omarchy.sh
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install-omarchy.sh | bash
 ```
+
+From a checkout: `./install-omarchy.sh`.
 
 That is `install.sh --omarchy`. On a machine whose `/etc/os-release` already says Omarchy, plain `install.sh` does the same layout.
 
@@ -34,12 +36,13 @@ In a terminal the same script also offers recommended packages (`iputils`, `iw`,
 ./install-omarchy.sh --autostart
 ```
 
-The piped form, after `gh auth login`:
+Hyprland autostart from the public script:
 
 ```bash
-gh api repos/velocityeu/nova-letterbox/contents/install-omarchy.sh \
-  -H "Accept: application/vnd.github.raw" | bash -s -- --autostart
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install-omarchy.sh | bash -s -- --autostart
 ```
+
+Anonymous GitHub API lookups are limited to 60 per hour. If that delays the release lookup, rerun after `gh auth login` or with `GH_TOKEN` set, or pin `NOVA_VERSION=v0.1.0` (or `continuous`). A private fork needs that token.
 
 ## Autostart and the 1920×480 output
 
@@ -69,4 +72,10 @@ It removes the user binary, symlink, desktop entry, and icon. If `/usr/local` al
 
 Hyprland and Omarchy autostart blocks (`nova-letterbox-begin` through `nova-letterbox-end` in `autostart.conf`, `autostart.lua`, and `looknfeel.lua`) are removed. Other lines in those files stay. A generic `exec-once = nova-letterbox` is kept when another install is still on disk.
 
-`~/.config/hypr/monitors.lua` is not edited. Packages the wizard installed are not removed. Godot's runtime folder `~/.local/share/godot/app_userdata/NOVA Letterbox` (and the same folder under `$XDG_DATA_HOME` when that is set) is removed with `--yes` or after a prompt. Other projects in `app_userdata` stay. Details and the private-repo one-liner are in the README.
+`~/.config/hypr/monitors.lua` is not edited. Packages the wizard installed are not removed. Godot's runtime folder `~/.local/share/godot/app_userdata/NOVA Letterbox` (and the same folder under `$XDG_DATA_HOME` when that is set) is removed with `--yes` or after a prompt. Other projects in `app_userdata` stay.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh | bash -s -- --yes
+```
+
+Details are in the README.

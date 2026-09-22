@@ -52,6 +52,10 @@ help_text="$(HOME=/tmp bash ./uninstall.sh --help 2>&1)"
 [[ "$help_text" == *Usage:* ]] || fail "help missing usage"
 [[ "$help_text" == *"--yes"* ]] || fail "help missing --yes"
 [[ "$help_text" == *"--system"* ]] || fail "help missing --system"
+[[ "$help_text" == *"raw.githubusercontent.com/velocityeu/nova-letterbox/main/uninstall.sh"* ]] || fail "help missing public uninstall URL"
+if [[ "$help_text" == *"private"* ]]; then
+	fail "uninstall help still says private"
+fi
 
 # --help must not delete a payload.
 help_home="$(mktemp -d)"

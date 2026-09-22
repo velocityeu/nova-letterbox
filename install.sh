@@ -7,9 +7,10 @@
 # and an autostart question. A pipe, --yes, or NOVA_NONINTERACTIVE=1 skips
 # every prompt and does not enable autostart unless --autostart is set.
 #
-# This repository is private. Anonymous curl of this script and of Release
-# assets fails until the repo is public. Export GH_TOKEN (or GITHUB_TOKEN),
-# or log in with `gh auth login`, before running. See the README.
+# The repository is public. A normal install does not need a token.
+# Anonymous GitHub API lookups are limited to 60/hour. If that limit is hit,
+# log in with `gh auth login`, export GH_TOKEN or GITHUB_TOKEN, or pin
+# NOVA_VERSION. A private fork needs a token. See the README.
 #
 #   NOVA_VERSION=v0.1.0     pin a tag (0.1.0 is accepted; a leading v is added)
 #   NOVA_VERSION=continuous rolling prerelease built from main
@@ -82,8 +83,8 @@ Remove an install with uninstall.sh (Linux PC, Pi, and Omarchy).
 install-omarchy.sh --uninstall runs that script.
 
 Environment:
-  GH_TOKEN or GITHUB_TOKEN   required for this private repo if \`gh\` is not logged in
-  NOVA_VERSION               tag to download (v0.1.0, 0.1.0, or continuous)
+  GH_TOKEN or GITHUB_TOKEN   optional; raises the GitHub API rate limit, or reads a private fork
+  NOVA_VERSION               tag to download (default: latest stable, currently v0.1.0; or continuous)
   NOVA_FROM_SOURCE=1         build with Godot 4.3.stable instead of downloading
   NOVA_NONINTERACTIVE=1      same as --yes
 EOF
@@ -272,6 +273,20 @@ PY
 }
 
 auth_hint() {
+	if [[ "${_NOVA_API_RATE_LIMITED:-0}" == "1" ]]; then
+		cat >&2 <<EOF
+GitHub API rate limit reached while looking up the release.
+Anonymous requests are limited to 60 per hour. The repository is public;
+the install script and release assets do not need a token.
+Raise the limit and run the installer again:
+  gh auth login
+or export GH_TOKEN or GITHUB_TOKEN.
+Or pin a release instead of releases/latest:
+  NOVA_VERSION=v0.1.0
+  NOVA_VERSION=continuous
+EOF
+		return 0
+	fi
 	if gh_logged_in || [[ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]]; then
 		cat >&2 <<EOF
 No matching GitHub Release asset for this repo.
@@ -282,13 +297,13 @@ EOF
 		return 0
 	fi
 	cat >&2 <<EOF
-This repo is private, so release downloads need an authenticated GitHub account.
+Could not download the GitHub Release asset.
+This repository is public. A normal install does not need a token.
+If the anonymous API rate limit (60/hour) was hit, or this is a private fork:
   gh auth login
-  gh release download --repo ${REPO} --pattern 'nova-letterbox-linux-*'
-or export GH_TOKEN (classic or fine-grained token that can read this repo's
-contents and release assets) and run the installer again.
-If no Release exists yet, the release workflow publishes a continuous
-prerelease from main, and a v* tag publishes the stable release.
+or export GH_TOKEN or GITHUB_TOKEN, then run the installer again.
+You can also pin a release: NOVA_VERSION=v0.1.0 or NOVA_VERSION=continuous.
+install.sh prefers the latest stable v* release, then the continuous prerelease.
 EOF
 }
 
@@ -309,22 +324,41 @@ download_with_gh() {
 	gh release download continuous --repo "$REPO" --pattern "$asset" --output "$dest" --clobber
 }
 
+# Exit 0: HTTP 200. Exit 2: GitHub API rate limit. Exit 1: anything else.
+classify_release_http() {
+	local status="$1"
+	local body="$2"
+	if [[ "$status" == "200" ]]; then
+		return 0
+	fi
+	if [[ "$status" == "403" || "$status" == "429" ]] && [[ -f "$body" ]] && grep -qi 'rate limit' "$body"; then
+		return 2
+	fi
+	return 1
+}
+
 fetch_release_json() {
 	local token="$1"
 	local tag="$2"
 	local out="$3"
-	local url
+	local url status rc
 	local -a args
 	if [[ -z "$tag" ]]; then
 		url="https://api.github.com/repos/${REPO}/releases/latest"
 	else
 		url="https://api.github.com/repos/${REPO}/releases/tags/${tag}"
 	fi
-	args=(-fsSL -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
+	args=(-sS -L -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28")
 	if [[ -n "$token" ]]; then
 		args+=(-H "Authorization: Bearer ${token}")
 	fi
-	curl "${args[@]}" -o "$out" "$url"
+	status="$(curl "${args[@]}" -o "$out" -w '%{http_code}' "$url" || true)"
+	rc=0
+	classify_release_http "$status" "$out" || rc=$?
+	if [[ "$rc" -eq 2 ]]; then
+		_NOVA_API_RATE_LIMITED=1
+	fi
+	return "$rc"
 }
 
 download_with_curl() {
@@ -332,22 +366,33 @@ download_with_curl() {
 	local tag="$2"
 	local asset="$3"
 	local dest="$4"
-	local json fields id url
+	local json fields id url rc
 	json="$(mktemp)"
+	rc=0
 	if [[ -z "$tag" ]]; then
-		if ! fetch_release_json "$token" "" "$json"; then
+		fetch_release_json "$token" "" "$json" || rc=$?
+		if [[ "$rc" -eq 2 ]]; then
+			rm -f "$json"
+			return 1
+		fi
+		if [[ "$rc" -ne 0 ]]; then
 			echo "No stable GitHub Release. Trying the continuous prerelease from main." >&2
 			echo "Push a v* tag when you want install.sh to prefer a stable latest release." >&2
-			if ! fetch_release_json "$token" "continuous" "$json"; then
+			rc=0
+			fetch_release_json "$token" "continuous" "$json" || rc=$?
+			if [[ "$rc" -ne 0 ]]; then
 				rm -f "$json"
 				return 1
 			fi
 		else
 			echo "Using the latest stable release."
 		fi
-	elif ! fetch_release_json "$token" "$tag" "$json"; then
-		rm -f "$json"
-		return 1
+	else
+		fetch_release_json "$token" "$tag" "$json" || rc=$?
+		if [[ "$rc" -ne 0 ]]; then
+			rm -f "$json"
+			return 1
+		fi
 	fi
 	if ! fields="$(release_asset_fields "$json" "$asset")"; then
 		rm -f "$json"
@@ -385,9 +430,6 @@ download_asset() {
 	fi
 	local token
 	token="$(resolve_token)"
-	if [[ -z "$token" ]]; then
-		echo "No GH_TOKEN and gh is not logged in. Trying an anonymous download." >&2
-	fi
 	if ! download_with_curl "$token" "$tag" "$asset" "$dest"; then
 		auth_hint
 		die "could not download ${asset}"

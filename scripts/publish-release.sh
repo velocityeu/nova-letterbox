@@ -24,7 +24,11 @@ Stable Linux release. Both binaries embed the PCK.
 - nova-letterbox-linux-x86_64
 - nova-letterbox-linux-arm64
 
-Install with the README one-liner. This repo is private, so GH_TOKEN or gh auth login is required.
+The repository is public. Install with:
+
+  curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | bash
+
+Pin this release with NOVA_VERSION=${tag}. If the anonymous GitHub API rate limit (60/hour) blocks the latest-release lookup, run gh auth login or export GH_TOKEN. A token is optional for the public repository.
 EOF
 	if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
 		gh release upload "$tag" "$x86" "$arm" --repo "$repo" --clobber
@@ -46,8 +50,12 @@ Rolling build from main. This is a prerelease, not the latest stable release.
 - nova-letterbox-linux-x86_64
 - nova-letterbox-linux-arm64
 
-install.sh uses the latest stable release when one exists, and falls back to this tag otherwise.
-Push a v* tag for a stable release.
+install.sh uses the latest stable release when one exists (v0.1.0 is the current stable), and falls back to this tag otherwise.
+The repository is public:
+
+  curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install.sh | NOVA_VERSION=continuous bash
+
+Push a v* tag for a stable release. A token is optional; use gh auth login or GH_TOKEN if the anonymous API rate limit (60/hour) blocks the lookup.
 EOF
 	if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
 		gh release delete "$tag" --repo "$repo" --yes --cleanup-tag

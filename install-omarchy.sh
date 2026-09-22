@@ -6,14 +6,16 @@
 #
 #   ./install-omarchy.sh
 #   ./install-omarchy.sh --autostart
-#   curl -fsSL .../install-omarchy.sh | bash -s -- --autostart
+#   curl -fsSL https://raw.githubusercontent.com/velocityeu/nova-letterbox/main/install-omarchy.sh | bash -s -- --autostart
 #
 # Remove the same install (user or /usr/local) with:
 #   ./install-omarchy.sh --uninstall
 #   ./install-omarchy.sh --uninstall --yes
 # That runs uninstall.sh. See the README.
 #
-# Private repo: GH_TOKEN or `gh auth login` is required. See docs/omarchy.md.
+# The repository is public. GH_TOKEN or `gh auth login` is optional: use it
+# when the GitHub API rate limit (60 anonymous requests/hour) is hit, or when
+# this is a private fork. See docs/omarchy.md.
 set -euo pipefail
 
 REPO="${NOVA_REPO:-velocityeu/nova-letterbox}"
@@ -61,10 +63,10 @@ locate_repo_script() {
 			-H "Authorization: Bearer ${token}" \
 			-H "Accept: application/vnd.github.raw" \
 			-o "$tmp" \
-			"$url" || die "could not download ${name} (private repo: set GH_TOKEN or run gh auth login)"
+			"$url" || die "could not download ${name}. Check GH_TOKEN or gh auth for ${REPO}. A public install does not need a token."
 	else
 		curl -fsSL -o "$tmp" "https://raw.githubusercontent.com/${REPO}/${REF}/${name}" \
-			|| die "could not download ${name}. This repo is private; set GH_TOKEN or run gh auth login."
+			|| die "could not download ${name} from raw.githubusercontent.com. Check the network. A private fork needs GH_TOKEN or gh auth login."
 	fi
 	chmod +x "$tmp"
 	printf '%s' "$tmp"
