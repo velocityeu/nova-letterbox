@@ -121,7 +121,7 @@ What it removes:
 - Installer blocks (`nova-letterbox-begin` / `nova-letterbox-end`) and known launch lines in Hyprland and Omarchy autostart, `~/.config/labwc/autostart`, and `~/.config/wayfire.ini`
 - PATH blocks between `nova-letterbox-path-begin` and `nova-letterbox-path-end`, plus `export PATH` lines that contain `nova-letterbox`, when you accept the prompt or pass `--yes`
 - A user unit at `~/.config/systemd/user/nova-letterbox.service` when it names the command being removed
-- Godot app data at `~/.local/share/godot/app_userdata/NOVA Letterbox`, when you accept the prompt or pass `--yes`
+- Godot's runtime folder `~/.local/share/godot/app_userdata/NOVA Letterbox` (logs and shader cache). The installer does not create it; Godot does when the app runs. If `XDG_DATA_HOME` is set, the same `godot/app_userdata/NOVA Letterbox` folder under that directory is removed too. Other projects in `app_userdata` stay. This runs when you accept the prompt or pass `--yes`.
 
 Other lines in those files stay. If a user install and a `/usr/local` install both exist and you remove only one, generic `exec-once = nova-letterbox` lines stay so the copy that is still installed can keep starting. Lines that name the removed command path are still deleted.
 

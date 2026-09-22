@@ -67,4 +67,4 @@ It removes the user binary, symlink, desktop entry, and icon. If `/usr/local` al
 
 Hyprland and Omarchy autostart blocks (`nova-letterbox-begin` through `nova-letterbox-end` in `autostart.conf`, `autostart.lua`, and `looknfeel.lua`) are removed. Other lines in those files stay. A generic `exec-once = nova-letterbox` is kept when another install is still on disk.
 
-`~/.config/hypr/monitors.lua` is not edited. Packages the wizard installed are not removed. Details and the private-repo one-liner are in the README.
+`~/.config/hypr/monitors.lua` is not edited. Packages the wizard installed are not removed. Godot's runtime folder `~/.local/share/godot/app_userdata/NOVA Letterbox` (and the same folder under `$XDG_DATA_HOME` when that is set) is removed with `--yes` or after a prompt. Other projects in `app_userdata` stay. Details and the private-repo one-liner are in the README.

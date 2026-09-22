@@ -144,7 +144,9 @@ mkdir -p "${share}/nova-letterbox" "${bin}" \
 	"${home}/.config/labwc" \
 	"${home}/.config/autostart" \
 	"${home}/.config/systemd/user/graphical-session.target.wants" \
-	"${share}/godot/app_userdata/NOVA Letterbox"
+	"${share}/godot/app_userdata/NOVA Letterbox/logs" \
+	"${share}/godot/app_userdata/NOVA Letterbox/shader_cache" \
+	"${share}/godot/app_userdata/Other Project"
 printf 'binary\n' >"${share}/nova-letterbox/nova-letterbox"
 ln -s "${share}/nova-letterbox/nova-letterbox" "${bin}/nova-letterbox"
 cat >"${share}/applications/nova-letterbox.desktop" <<'EOF'
@@ -236,7 +238,9 @@ EOF
 ln -s "${home}/.config/systemd/user/nova-letterbox.service" \
 	"${home}/.config/systemd/user/graphical-session.target.wants/nova-letterbox.service"
 printf 'other\n' >"${home}/.config/systemd/user/other.service"
-printf 'preview\n' >"${share}/godot/app_userdata/NOVA Letterbox/note"
+printf 'log\n' >"${share}/godot/app_userdata/NOVA Letterbox/logs/godot.log"
+printf 'cache\n' >"${share}/godot/app_userdata/NOVA Letterbox/shader_cache/entry"
+printf 'keep\n' >"${share}/godot/app_userdata/Other Project/keep.txt"
 
 sudo_log="$(mktemp)"
 sudo_bin="$(mktemp -d)"
@@ -305,6 +309,8 @@ fi
 [[ ! -e "${home}/.config/systemd/user/graphical-session.target.wants/nova-letterbox.service" ]] || fail "unit enable symlink remains"
 [[ -f "${home}/.config/systemd/user/other.service" ]] || fail "other unit removed"
 [[ ! -e "${share}/godot/app_userdata/NOVA Letterbox" ]] || fail "godot data remains"
+[[ -d "${share}/godot/app_userdata" ]] || fail "godot app_userdata tree was removed"
+[[ -f "${share}/godot/app_userdata/Other Project/keep.txt" ]] || fail "other Godot project was removed"
 [[ "$out" == *"Removed:"* && "$out" == *"${share}/nova-letterbox"* ]] || fail "summary missing app dir: ${out}"
 [[ "$out" == *"updated ${home}/.bashrc"* ]] || fail "summary missing bashrc: ${out}"
 [[ "$out" == *"still exports PATH for ${bin}"* ]] || fail "summary should keep shared PATH: ${out}"
@@ -483,8 +489,49 @@ HOME=/tmp bash -c '
 	assert_app_dir /usr/local/share/nova-letterbox /usr/local/share
 	assert_cli /usr/local/bin/nova-letterbox /usr/local
 	assert_icon /usr/local/share/icons/hicolor/scalable/apps/nova-letterbox.svg /usr/local/share
+	assert_godot_app_dir "${HOME}/.local/share/godot/app_userdata/NOVA Letterbox"
+	if assert_godot_app_dir "${HOME}/.local/share/godot/app_userdata"; then
+		exit 7
+	fi
+	if assert_godot_app_dir "${HOME}/.local/share/godot"; then
+		exit 8
+	fi
+	if XDG_DATA_HOME=/ assert_godot_app_dir "/godot/app_userdata/NOVA Letterbox"; then
+		exit 9
+	fi
+	XDG_DATA_HOME=/tmp/xdg-nova assert_godot_app_dir "/tmp/xdg-nova/godot/app_userdata/NOVA Letterbox"
+	if XDG_DATA_HOME=/tmp/xdg-nova assert_godot_app_dir "/tmp/xdg-nova/godot/app_userdata/Other Project"; then
+		exit 10
+	fi
 	exit 0
 ' || fail "path checks rejected a real install path or allowed an unsafe one"
+
+# Runtime Godot data is not part of the install. --yes removes only the
+# NOVA Letterbox folder under ~/.local/share and under XDG_DATA_HOME.
+xdg_home="$(mktemp -d)"
+xdg_root="$(mktemp -d)"
+mkdir -p \
+	"${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox/logs" \
+	"${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox/shader_cache" \
+	"${xdg_home}/.local/share/godot/app_userdata/Other Project" \
+	"${xdg_root}/godot/app_userdata/NOVA Letterbox/shader_cache" \
+	"${xdg_root}/godot/app_userdata/Other Project"
+printf 'log\n' >"${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox/logs/godot.log"
+printf 'cache\n' >"${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox/shader_cache/entry"
+printf 'keep\n' >"${xdg_home}/.local/share/godot/app_userdata/Other Project/keep.txt"
+printf 'xdg-cache\n' >"${xdg_root}/godot/app_userdata/NOVA Letterbox/shader_cache/entry"
+printf 'xdg-keep\n' >"${xdg_root}/godot/app_userdata/Other Project/keep.txt"
+xdg_out="$(HOME="$xdg_home" XDG_DATA_HOME="$xdg_root" bash ./uninstall.sh --yes)"
+[[ ! -e "${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox" ]] || fail "default godot data remains"
+[[ ! -e "${xdg_root}/godot/app_userdata/NOVA Letterbox" ]] || fail "XDG godot data remains"
+[[ -d "${xdg_home}/.local/share/godot/app_userdata" ]] || fail "default app_userdata removed"
+[[ -d "${xdg_root}/godot/app_userdata" ]] || fail "XDG app_userdata removed"
+[[ -f "${xdg_home}/.local/share/godot/app_userdata/Other Project/keep.txt" ]] || fail "default sibling project removed"
+[[ -f "${xdg_root}/godot/app_userdata/Other Project/keep.txt" ]] || fail "XDG sibling project removed"
+[[ -d "${xdg_root}/godot" ]] || fail "XDG godot directory removed"
+[[ "$xdg_out" == *"${xdg_home}/.local/share/godot/app_userdata/NOVA Letterbox"* ]] || fail "summary missing default godot path: ${xdg_out}"
+[[ "$xdg_out" == *"${xdg_root}/godot/app_userdata/NOVA Letterbox"* ]] || fail "summary missing XDG godot path: ${xdg_out}"
+rm -rf "$xdg_home" "$xdg_root"
 
 # Interactive prompts: decline leaves the install; a later no keeps PATH and app data.
 python3 - "$root" <<'PY'

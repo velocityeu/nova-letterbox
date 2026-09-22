@@ -7,9 +7,12 @@
 #   ./install-omarchy.sh --uninstall
 #
 # A terminal asks before removing anything, before sudo, before shell
-# startup edits, and before deleting Godot app data. --yes,
+# startup edits, and before deleting Godot app data. Godot creates
+# ~/.local/share/godot/app_userdata/NOVA Letterbox/ at runtime (logs and
+# shader cache). The same folder under $XDG_DATA_HOME is removed when that
+# variable is set. Other projects in app_userdata stay. --yes,
 # NOVA_NONINTERACTIVE=1, or a pipe skips those questions and removes the
-# install, autostart lines, installer PATH blocks, and Godot app data.
+# install, autostart lines, installer PATH blocks, and that app data.
 #
 # An unmarked export PATH="$HOME/.local/bin:$PATH" is not removed unless
 # you accept that prompt. That directory is shared with other programs.
@@ -65,6 +68,9 @@ Shell startup files (~/.bashrc, ~/.zshrc, ~/.profile) lose only the
 nova-letterbox-path block and export lines that contain nova-letterbox.
 An unmarked export of ~/.local/bin is offered separately and is kept when
 you say no, or when --yes is set.
+
+Godot's runtime folder is removed only when it is named "NOVA Letterbox"
+under godot/app_userdata. The rest of that tree is left alone.
 
 Not removed: distro packages, Hyprland monitor modes, Pi blanking, and a
 running nova-letterbox process (quit that window yourself).
@@ -706,8 +712,51 @@ refresh_caches() {
 	fi
 }
 
-godot_data_dir() {
-	printf '%s/godot/app_userdata/NOVA Letterbox' "$(user_share)"
+# Runtime data Godot creates. The installer does not write this.
+# Always the default ~/.local/share path, plus $XDG_DATA_HOME when it is
+# a different absolute directory. One path per line.
+godot_data_dirs() {
+	local def="${HOME}/.local/share/godot/app_userdata/NOVA Letterbox"
+	printf '%s\n' "$def"
+	if [[ -z "${XDG_DATA_HOME:-}" ]]; then
+		return 0
+	fi
+	local xdg="${XDG_DATA_HOME%/}"
+	case "$xdg" in
+		/*) ;;
+		*) return 0 ;;
+	esac
+	case "$xdg" in
+		/|/usr|/bin|/etc|/home|/root|/var|/tmp|/opt) return 0 ;;
+	esac
+	local alt="${xdg}/godot/app_userdata/NOVA Letterbox"
+	if [[ "$alt" != "$def" ]]; then
+		printf '%s\n' "$alt"
+	fi
+}
+
+godot_runtime_present() {
+	local dir
+	while IFS= read -r dir; do
+		[[ -n "$dir" && -d "$dir" ]] && return 0
+	done < <(godot_data_dirs)
+	return 1
+}
+
+# True only for the NOVA Letterbox directory, never app_userdata itself.
+assert_godot_app_dir() {
+	local path="$1"
+	local expected found=0
+	safe_path "$path" || return 1
+	[[ "$(basename "$path")" == "NOVA Letterbox" ]] || return 1
+	[[ "$(basename "$(dirname "$path")")" == "app_userdata" ]] || return 1
+	[[ "$(basename "$(dirname "$(dirname "$path")")")" == "godot" ]] || return 1
+	while IFS= read -r expected; do
+		if [[ "$path" == "$expected" ]]; then
+			found=1
+		fi
+	done < <(godot_data_dirs)
+	[[ "$found" == 1 ]]
 }
 
 systemd_unit() {
@@ -932,7 +981,7 @@ core_work_present() {
 	if any_autostart_mention; then
 		return 0
 	fi
-	if [[ -z "$ONLYBIN" && -d "$(godot_data_dir)" ]]; then
+	if [[ -z "$ONLYBIN" ]] && godot_runtime_present; then
 		return 0
 	fi
 	if [[ -f "$(systemd_unit)" ]]; then
@@ -1073,29 +1122,58 @@ print_summary() {
 	fi
 }
 
+remove_one_godot_dir() {
+	local path="$1"
+	if ! assert_godot_app_dir "$path"; then
+		note_failed "${path} (refusing an unexpected app-data path)"
+		return 1
+	fi
+	# A symlink is removed as a link. rm -rf of the real directory does not
+	# climb to godot/ or app_userdata/.
+	if [[ -L "$path" ]]; then
+		rm -f -- "$path" || true
+	else
+		rm -rf -- "$path" || true
+	fi
+	if [[ -e "$path" || -L "$path" ]]; then
+		note_failed "$path"
+		return 1
+	fi
+	note_removed "$path"
+}
+
 remove_godot_data() {
 	local dir
-	dir="$(godot_data_dir)"
-	[[ -d "$dir" ]] || return 0
+	local -a found=()
+	if [[ -n "${XDG_DATA_HOME:-}" && "${XDG_DATA_HOME}" != /* ]]; then
+		note_left "XDG_DATA_HOME is not absolute (${XDG_DATA_HOME}); Godot app data there was not removed"
+	fi
+	while IFS= read -r dir; do
+		[[ -n "$dir" && -d "$dir" ]] || continue
+		found+=("$dir")
+	done < <(godot_data_dirs)
+	[[ ${#found[@]} -gt 0 ]] || return 0
 	if [[ -n "$ONLYBIN" ]]; then
-		note_left "${dir} kept because another install is still present"
+		for dir in "${found[@]}"; do
+			note_left "${dir} kept because another install is still present"
+		done
 		return 0
 	fi
-	if ! safe_path "$dir"; then
-		note_failed "${dir} (refusing an unexpected app-data path)"
-		return 1
-	fi
-	[[ "$dir" == */godot/app_userdata/NOVA\ Letterbox ]] || {
-		note_failed "${dir} (refusing an unexpected app-data path)"
-		return 1
-	}
 	if interactive_mode; then
-		if ! ask_yn "Remove Godot app data at ${dir}?"; then
-			note_left "${dir} kept"
+		echo "Godot created this at runtime (logs and shader cache):"
+		for dir in "${found[@]}"; do
+			echo "  ${dir}"
+		done
+		if ! ask_yn "Remove Godot app data for NOVA Letterbox?"; then
+			for dir in "${found[@]}"; do
+				note_left "${dir} kept"
+			done
 			return 0
 		fi
 	fi
-	remove_path "$dir" tree || true
+	for dir in "${found[@]}"; do
+		remove_one_godot_dir "$dir" || true
+	done
 }
 
 finish() {

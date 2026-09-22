@@ -89,7 +89,7 @@ The same `uninstall.sh` as a Linux PC or Omarchy. In a terminal it asks first. `
 ./uninstall.sh --yes
 ```
 
-It removes `~/.local/share/nova-letterbox/`, the `~/.local/bin/nova-letterbox` symlink, the desktop entry, and icons. Installer lines in `~/.config/labwc/autostart` and `nova_letterbox` in `~/.config/wayfire.ini` are removed. Other lines in those files stay, including `swayidle` and wayfire `dpms_timeout`. A hand-copied `~/.config/systemd/user/nova-letterbox.service` is removed when it starts this command. HDMI timing and screen blanking are not changed. `--system` removes a `/usr/local` copy instead, and asks for `sudo` when those files are not writable.
+It removes `~/.local/share/nova-letterbox/`, the `~/.local/bin/nova-letterbox` symlink, the desktop entry, and icons. Installer lines in `~/.config/labwc/autostart` and `nova_letterbox` in `~/.config/wayfire.ini` are removed. Other lines in those files stay, including `swayidle` and wayfire `dpms_timeout`. A hand-copied `~/.config/systemd/user/nova-letterbox.service` is removed when it starts this command. Godot's runtime folder `~/.local/share/godot/app_userdata/NOVA Letterbox` (logs and shader cache) is removed with `--yes`, or after a prompt. Other Godot projects in `app_userdata` stay. The same folder under `$XDG_DATA_HOME` is removed when that variable is set. HDMI timing and screen blanking are not changed. `--system` removes a `/usr/local` copy instead, and asks for `sudo` when those files are not writable.
 
 ## Rebuild
 
