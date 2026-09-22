@@ -58,3 +58,13 @@ hl.monitor({ output = "HDMI-A-1", mode = "1920x480@60", position = "auto", scale
 Keys, with the window focused: `1` Simple, `2` Complete, `Tab` toggles, `Esc` or `Q` quits, `F11` toggles fullscreen. Renderer is GL Compatibility. If the window does not map, try `nova-letterbox --fullscreen --display-driver x11`.
 
 Examples of the lines the installer appends are in `packaging/omarchy/`.
+
+## Uninstall
+
+The same `uninstall.sh` as a Linux PC or a Pi. `./install-omarchy.sh --uninstall` runs it. `--yes` skips the questions.
+
+It removes the user binary, symlink, desktop entry, and icon. If `/usr/local` also has a copy, that tree is removed too, with `sudo` when it is not writable. `--system` limits the binary, desktop entry, and icons to `/usr/local`.
+
+Hyprland and Omarchy autostart blocks (`nova-letterbox-begin` through `nova-letterbox-end` in `autostart.conf`, `autostart.lua`, and `looknfeel.lua`) are removed. Other lines in those files stay. A generic `exec-once = nova-letterbox` is kept when another install is still on disk.
+
+`~/.config/hypr/monitors.lua` is not edited. Packages the wizard installed are not removed. Details and the private-repo one-liner are in the README.

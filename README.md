@@ -94,6 +94,48 @@ export NOVA_VERSION=v0.1.0      # stable tag (0.1.0 is accepted; a leading v is 
 export NOVA_VERSION=continuous  # rolling build from main
 ```
 
+## Uninstall
+
+One script for a Linux PC, a Raspberry Pi, and Omarchy. In a terminal it asks before removing anything, before `sudo`, before editing `~/.bashrc`, `~/.zshrc`, or `~/.profile`, and before deleting Godot app data. `--yes`, `NOVA_NONINTERACTIVE=1`, or a pipe skips the questions and removes the install, autostart lines, the installer PATH blocks, and that app data.
+
+```bash
+./uninstall.sh
+./uninstall.sh --yes
+./uninstall.sh --system          # /usr/local; sudo when those files are not writable
+./install-omarchy.sh --uninstall
+./install-omarchy.sh --uninstall --yes
+```
+
+The default removes the user install (`~/.local/share/nova-letterbox/`, the `~/.local/bin/nova-letterbox` symlink, the desktop entry, and icons). If `/usr/local` also has a copy, that copy is removed in the same run. `--user` leaves `/usr/local` alone. `--system` leaves `~/.local` alone. `--prefix DIR` removes only `DIR/share` and `DIR/bin`.
+
+From the private repo, the same pattern as install:
+
+```bash
+gh api repos/velocityeu/nova-letterbox/contents/uninstall.sh --jq .content | base64 -d | bash -s -- --yes
+```
+
+What it removes:
+
+- The install directory, command symlink, `nova-letterbox.desktop`, and `nova-letterbox` icons under the chosen prefix
+- `~/.config/autostart/nova-letterbox.desktop`
+- Installer blocks (`nova-letterbox-begin` / `nova-letterbox-end`) and known launch lines in Hyprland and Omarchy autostart, `~/.config/labwc/autostart`, and `~/.config/wayfire.ini`
+- PATH blocks between `nova-letterbox-path-begin` and `nova-letterbox-path-end`, plus `export PATH` lines that contain `nova-letterbox`, when you accept the prompt or pass `--yes`
+- A user unit at `~/.config/systemd/user/nova-letterbox.service` when it names the command being removed
+- Godot app data at `~/.local/share/godot/app_userdata/NOVA Letterbox`, when you accept the prompt or pass `--yes`
+
+Other lines in those files stay. If a user install and a `/usr/local` install both exist and you remove only one, generic `exec-once = nova-letterbox` lines stay so the copy that is still installed can keep starting. Lines that name the removed command path are still deleted.
+
+What it does not remove:
+
+- Packages the wizard may have installed (`python3`, `curl`, `iputils`, `iw`, wireless tools, `ethtool`, `network-manager`). They are shared with the rest of the system.
+- Hyprland monitor lines you added in `~/.config/hypr/monitors.lua`
+- Pi blanking (`raspi-config`, a `swayidle` line, wayfire `dpms_timeout`)
+- An unmarked `export PATH="$HOME/.local/bin:$PATH"` (or the same line for another shared bin directory). The installer writes its PATH line inside the marker block. A line outside that block is offered in a terminal and kept with `--yes`, because other programs use that directory.
+- A marker block that has no matching end line. The file is left unchanged and named in the summary.
+- A `nova-letterbox` process that is still running. Quit it with Esc or Q.
+
+The script prints a summary of what was removed and what was left. It exits 0 when every file it tried to delete is gone, including when nothing was installed. It exits non-zero when a delete fails (for example `sudo` was denied). Saying no to a prompt is not a failure.
+
 ## Views
 
 | View | When | What you see |
@@ -200,7 +242,8 @@ On a Linux machine with a default route, `res://tests/probe_live.tscn` prints on
 project.godot              1920×480 window, GL Compatibility, main scene
 export_presets.cfg         Linux Desktop (x86_64) and Linux Pi ARM64
 install.sh                 text wizard, or a one-line install with --yes
-install-omarchy.sh         same install, Omarchy desktop entry forced
+uninstall.sh               remove the install, autostart lines, and PATH blocks
+install-omarchy.sh         same install, Omarchy desktop entry forced; --uninstall runs uninstall.sh
 scripts/export-linux.sh    headless release export when godot is on PATH
 scripts/ci-install-godot.sh  Godot 4.3.stable editor and export templates
 scripts/publish-release.sh   upload dist/ binaries to a GitHub Release

@@ -8,6 +8,11 @@
 #   ./install-omarchy.sh --autostart
 #   curl -fsSL .../install-omarchy.sh | bash -s -- --autostart
 #
+# Remove the same install (user or /usr/local) with:
+#   ./install-omarchy.sh --uninstall
+#   ./install-omarchy.sh --uninstall --yes
+# That runs uninstall.sh. See the README.
+#
 # Private repo: GH_TOKEN or `gh auth login` is required. See docs/omarchy.md.
 set -euo pipefail
 
@@ -35,34 +40,56 @@ resolve_token() {
 	printf ''
 }
 
-# Print the path of install.sh: the sibling in a checkout, or a temp download.
-locate_install_sh() {
+# Print the path of a sibling script, or a temp download of that file.
+locate_repo_script() {
+	local name="$1"
 	local self dir token tmp url
 	# Unset when this file is piped to bash. Do not touch BASH_SOURCE[0] then.
 	self="${BASH_SOURCE[0]:-}"
 	if [[ -n "$self" && -f "$self" ]]; then
 		dir="$(cd "$(dirname "$self")" && pwd)"
-		if [[ -f "${dir}/install.sh" ]]; then
-			printf '%s' "${dir}/install.sh"
+		if [[ -f "${dir}/${name}" ]]; then
+			printf '%s' "${dir}/${name}"
 			return 0
 		fi
 	fi
 	token="$(resolve_token)"
 	tmp="$(mktemp)"
-	url="https://api.github.com/repos/${REPO}/contents/install.sh?ref=${REF}"
+	url="https://api.github.com/repos/${REPO}/contents/${name}?ref=${REF}"
 	if [[ -n "$token" ]]; then
 		curl -fsSL \
 			-H "Authorization: Bearer ${token}" \
 			-H "Accept: application/vnd.github.raw" \
 			-o "$tmp" \
-			"$url" || die "could not download install.sh (private repo: set GH_TOKEN or run gh auth login)"
+			"$url" || die "could not download ${name} (private repo: set GH_TOKEN or run gh auth login)"
 	else
-		curl -fsSL -o "$tmp" "https://raw.githubusercontent.com/${REPO}/${REF}/install.sh" \
-			|| die "could not download install.sh. This repo is private; set GH_TOKEN or run gh auth login."
+		curl -fsSL -o "$tmp" "https://raw.githubusercontent.com/${REPO}/${REF}/${name}" \
+			|| die "could not download ${name}. This repo is private; set GH_TOKEN or run gh auth login."
 	fi
 	chmod +x "$tmp"
 	printf '%s' "$tmp"
 }
 
-script="$(locate_install_sh)"
-exec bash "$script" --omarchy "$@"
+forward=()
+uninstall=0
+for arg in "$@"; do
+	if [[ "$arg" == "--uninstall" ]]; then
+		uninstall=1
+		continue
+	fi
+	forward+=("$arg")
+done
+
+if [[ "$uninstall" == 1 ]]; then
+	script="$(locate_repo_script uninstall.sh)"
+	if [[ ${#forward[@]} -eq 0 ]]; then
+		exec bash "$script"
+	fi
+	exec bash "$script" "${forward[@]}"
+fi
+
+script="$(locate_repo_script install.sh)"
+if [[ ${#forward[@]} -eq 0 ]]; then
+	exec bash "$script" --omarchy
+fi
+exec bash "$script" --omarchy "${forward[@]}"

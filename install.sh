@@ -78,6 +78,9 @@ In a terminal this is a text wizard (dependencies, PATH, autostart).
   --yes          non-interactive: no prompts, no package installs, no PATH edit
   -h, --help     show this help
 
+Remove an install with uninstall.sh (Linux PC, Pi, and Omarchy).
+install-omarchy.sh --uninstall runs that script.
+
 Environment:
   GH_TOKEN or GITHUB_TOKEN   required for this private repo if \`gh\` is not logged in
   NOVA_VERSION               tag to download (v0.1.0, 0.1.0, or continuous)
@@ -651,6 +654,9 @@ Keys, with the window focused:
   1 Simple  ·  2 Complete  ·  Tab toggle
   Esc or Q quit  ·  F11 fullscreen
 The project uses the GL Compatibility renderer.
+
+Uninstall (Linux PC, Pi, and Omarchy):
+  uninstall.sh
 
 Pi HDMI 1920×480, blanking, and labwc/wayfire:
   https://github.com/${REPO}/blob/main/docs/pi-kiosk.md
