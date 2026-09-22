@@ -4,6 +4,8 @@ Run the ARM64 release binary on 64-bit Raspberry Pi OS with a desktop session (l
 
 The window is **1920×480**, fullscreen, GL Compatibility. With the window focused: `1` Simple, `2` Complete, `Tab` toggles, `Esc` or `Q` quits, `F11` toggles fullscreen. The cursor hides while fullscreen. Missing Wi-Fi or the Pi temperature sensor stays at an explicit offline or N/A state; the shell still starts.
 
+Live captures: [Simple view](images/docs-app-simple.png) and [Complete view](images/docs-app-complete.png).
+
 ## Install on the Pi
 
 The repo is private. Log in first (`gh auth login`) or export `GH_TOKEN`, then:

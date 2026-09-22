@@ -25,6 +25,8 @@ The desktop entry is named **NOVA Letterbox**. `Exec` calls `omarchy-launch-or-f
 
 After install, open it from the launcher: **Super+Space**, then NOVA Letterbox. Nothing starts at login unless you say yes in the terminal wizard or pass `--autostart`. `--yes` and a pipe do not ask and do not enable autostart unless `--autostart` is present.
 
+A noninteractive run of the same installer: [install.sh --yes](images/docs-install-run.png).
+
 In a terminal the same script also offers recommended packages (`iputils`, `iw`, `wireless_tools`, `ethtool`, and optionally `networkmanager`) and can append `~/.local/bin` to your shell rc if it is not on `PATH`.
 
 ```bash
